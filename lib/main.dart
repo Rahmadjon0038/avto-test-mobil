@@ -96,12 +96,11 @@ class _RoadTestAppState extends State<RoadTestApp> {
     setState(() => _session = null);
   }
 
-  Future<void> _openAuthSheet(AuthMode initialMode) async {
-    final result = await showModalBottomSheet<AuthSession>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AuthSheet(initialMode: initialMode),
+  Future<void> _openAuthPage(AuthMode initialMode) async {
+    final result = await Navigator.of(context).push<AuthSession>(
+      MaterialPageRoute(
+        builder: (context) => AuthPage(initialMode: initialMode),
+      ),
     );
 
     if (result != null) {
@@ -126,13 +125,13 @@ class _RoadTestAppState extends State<RoadTestApp> {
           ? const SplashScreen()
           : _session == null
           ? LandingScreen(
-              onLogin: () => _openAuthSheet(AuthMode.login),
-              onRegister: () => _openAuthSheet(AuthMode.register),
+              onLogin: () => _openAuthPage(AuthMode.login),
+              onRegister: () => _openAuthPage(AuthMode.register),
             )
           : HomeScreen(
               session: _session!,
               onLogout: _logout,
-              onLogin: () => _openAuthSheet(AuthMode.login),
+              onLogin: () => _openAuthPage(AuthMode.login),
             ),
     );
   }
@@ -726,16 +725,16 @@ class _StatusCard extends StatelessWidget {
 
 enum AuthMode { login, register }
 
-class AuthSheet extends StatefulWidget {
-  const AuthSheet({super.key, required this.initialMode});
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key, required this.initialMode});
 
   final AuthMode initialMode;
 
   @override
-  State<AuthSheet> createState() => _AuthSheetState();
+  State<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthSheetState extends State<AuthSheet> {
+class _AuthPageState extends State<AuthPage> {
   late AuthMode _mode = widget.initialMode;
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
@@ -801,157 +800,144 @@ class _AuthSheetState extends State<AuthSheet> {
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        leading: const BackButton(),
+        title: Text(isLogin ? 'Kirish' : "Ro'yxatdan o'tish"),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            18,
+            20,
+            24 + MediaQuery.viewInsetsOf(context).bottom,
           ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(99),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: SegmentedButton<AuthMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: AuthMode.login,
+                            label: Text('Kirish'),
+                          ),
+                          ButtonSegment(
+                            value: AuthMode.register,
+                            label: Text('Ro\'yxat'),
+                          ),
+                        ],
+                        selected: {_mode},
+                        onSelectionChanged: (value) => _switchMode(value.first),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SegmentedButton<AuthMode>(
-                          segments: const [
-                            ButtonSegment(
-                              value: AuthMode.login,
-                              label: Text('Kirish'),
-                            ),
-                            ButtonSegment(
-                              value: AuthMode.register,
-                              label: Text('Ro\'yxat'),
-                            ),
-                          ],
-                          selected: {_mode},
-                          onSelectionChanged: (value) =>
-                              _switchMode(value.first),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    isLogin ? 'Tizimga kirish' : 'Ro\'yxatdan o\'tish',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isLogin
-                        ? 'Telefon raqam va parol bilan kiring.'
-                        : 'Ism, telefon raqam va parol bilan ro\'yxatdan o\'ting.',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  if (!isLogin) ...[
-                    TextFormField(
-                      controller: _fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'To‘liq ism',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'Ism kiriting'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
                   ],
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Telefon raqam',
-                      hintText: '90 123 45 67',
-                      border: OutlineInputBorder(),
-                      prefixText: '+998 ',
-                    ),
-                    validator: (value) {
-                      final digits = _normalizePhoneDigits(value ?? '');
-                      return digits.length == 9
-                          ? null
-                          : 'Telefon raqam noto‘g‘ri';
-                    },
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  isLogin ? 'Tizimga kirish' : 'Ro\'yxatdan o\'tish',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
                   ),
-                  const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isLogin
+                      ? 'Telefon raqam va parol bilan kiring.'
+                      : 'Ism, telefon raqam va parol bilan ro\'yxatdan o\'ting.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                if (!isLogin) ...[
                   TextFormField(
-                    controller: _passwordController,
-                    obscureText: _hidePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Parol',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        onPressed: () =>
-                            setState(() => _hidePassword = !_hidePassword),
-                        icon: Icon(
-                          _hidePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                      ),
+                    controller: _fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'To‘liq ism',
+                      border: OutlineInputBorder(),
                     ),
-                    validator: (value) =>
-                        value == null || value.trim().length < 6
-                        ? 'Kamida 6 ta belgi bo‘lsin'
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Ism kiriting'
                         : null,
                   ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _loading ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                  const SizedBox(height: 12),
+                ],
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Telefon raqam',
+                    hintText: '90 123 45 67',
+                    border: OutlineInputBorder(),
+                    prefixText: '+998 ',
+                  ),
+                  validator: (value) {
+                    final digits = _normalizePhoneDigits(value ?? '');
+                    return digits.length == 9
+                        ? null
+                        : 'Telefon raqam noto‘g‘ri';
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _hidePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Parol',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      onPressed: () =>
+                          setState(() => _hidePassword = !_hidePassword),
+                      icon: Icon(
+                        _hidePassword ? Icons.visibility_off : Icons.visibility,
                       ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(isLogin ? 'Kirish' : 'Ro‘yxatdan o‘tish'),
                     ),
                   ),
+                  validator: (value) => value == null || value.trim().length < 6
+                      ? 'Kamida 6 ta belgi bo‘lsin'
+                      : null,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
                 ],
-              ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _loading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(isLogin ? 'Kirish' : 'Ro‘yxatdan o‘tish'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
