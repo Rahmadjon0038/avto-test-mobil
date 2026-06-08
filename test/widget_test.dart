@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:avto_test_mobil/main.dart';
+import 'package:avto_test_mobil/screens/landing_screen.dart';
 
 void main() {
   testWidgets('shows landing screen text', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: LandingScreen(onLogin: _noop, onRegister: _noop),
       ),
     );
 
-    expect(find.text('Road Test Mobil Ilova'), findsWidgets);
-    expect(find.text('Kirish'), findsOneWidget);
-    expect(find.text("Ro'yxatdan o'tish"), findsOneWidget);
+    expect(find.text('Testlarga kirish'), findsOneWidget);
+    expect(find.text('Mavzu bo‘yicha testlar'), findsOneWidget);
+    expect(find.text('Video darsliklar'), findsOneWidget);
+    expect(
+      find.text('Haydovchilikka\ntayyormisiz?'),
+      findsOneWidget,
+    );
   });
 }
 

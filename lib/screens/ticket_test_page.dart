@@ -1,0 +1,744 @@
+import 'package:flutter/material.dart';
+
+import '../core/app_colors.dart';
+import '../core/app_constants.dart';
+import '../models/auth_session.dart';
+import '../models/ticket_summary.dart';
+import '../models/topic_question.dart';
+import '../services/api_client.dart';
+
+class TicketTestPage extends StatefulWidget {
+  const TicketTestPage({
+    super.key,
+    required this.session,
+    required this.ticket,
+  });
+
+  final AuthSession session;
+  final TicketSummary ticket;
+
+  @override
+  State<TicketTestPage> createState() => _TicketTestPageState();
+}
+
+class _TicketTestPageState extends State<TicketTestPage> {
+  late Future<List<TopicQuestion>> _questionsFuture;
+  final List<int?> _answers = <int?>[];
+  int _currentIndex = 0;
+  int? _selectedIndex;
+  bool _resultShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _questionsFuture = ApiClient.ticketQuestions(
+      accessToken: widget.session.accessToken,
+      ticketId: widget.ticket.id,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FutureBuilder<List<TopicQuestion>>(
+            future: _questionsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return _EmptyState(
+                  title: 'Bu biletda testlar mavjud emas',
+                  subtitle: 'Hozircha ushbu bilet uchun savollar qo‘shilmagan.',
+                  buttonText: 'Ortga qaytish',
+                  onPressed: () => Navigator.of(context).pop(),
+                );
+              }
+
+              final questions = snapshot.data ?? const <TopicQuestion>[];
+              if (questions.isEmpty) {
+                return _EmptyState(
+                  title: 'Bu biletda testlar mavjud emas',
+                  subtitle: 'Hozircha ushbu bilet uchun savollar qo‘shilmagan.',
+                  buttonText: 'Ortga qaytish',
+                  onPressed: () => Navigator.of(context).pop(),
+                );
+              }
+
+              final question = questions[_currentIndex];
+              final progress = (_currentIndex + 1) / questions.length;
+              final isLast = _currentIndex == questions.length - 1;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(),
+                          customBorder: const CircleBorder(),
+                          child: const SizedBox(
+                            width: 46,
+                            height: 46,
+                            child: Icon(Icons.arrow_back_rounded),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.ticket.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_currentIndex + 1}/${questions.length} savol',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 8,
+                      backgroundColor: AppColors.border.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: AppColors.border.withValues(alpha: 0.72),
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x08000000),
+                                  blurRadius: 14,
+                                  offset: Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  question.text,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    height: 1.28,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                if (_questionImageUrl(question) != null) ...[
+                                  const SizedBox(height: 14),
+                                  GestureDetector(
+                                    onTap: () => _openImagePreview(
+                                      _questionImageUrl(question)!,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(18),
+                                      child: Image.network(
+                                        _questionImageUrl(question)!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          ...List.generate(question.options.length, (index) {
+                            final selected = _selectedIndex == index;
+                            final isCorrect = index == question.correctIndex;
+                            final showResult = _selectedIndex != null;
+                            final backgroundColor = showResult
+                                ? isCorrect
+                                    ? const Color(0xFFCFF0D9)
+                                    : selected
+                                        ? const Color(0xFFF4C5C5)
+                                        : Colors.white
+                                : selected
+                                    ? AppColors.surfaceTint
+                                    : Colors.white;
+                            final borderColor = showResult
+                                ? isCorrect
+                                    ? const Color(0xFF6CBF86)
+                                    : selected
+                                        ? const Color(0xFFDD6B6B)
+                                        : AppColors.border.withValues(alpha: 0.72)
+                                : selected
+                                    ? AppColors.primary.withValues(alpha: 0.28)
+                                    : AppColors.border.withValues(alpha: 0.72);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Material(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                child: InkWell(
+                                  onTap: _selectedIndex == null
+                                      ? () {
+                                          setState(() {
+                                            _selectedIndex = index;
+                                          });
+                                        }
+                                      : null,
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 15,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: backgroundColor,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(color: borderColor),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: showResult && isCorrect
+                                                ? const Color(0xFF21A65B)
+                                                : showResult && selected
+                                                    ? const Color(0xFFD64545)
+                                                    : const Color(0xFFE9EDF6),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            showResult && isCorrect
+                                                ? Icons.check_rounded
+                                                : showResult && selected
+                                                    ? Icons.close_rounded
+                                                    : Icons.circle_outlined,
+                                            size: 16,
+                                            color: showResult && (isCorrect || selected)
+                                                ? Colors.white
+                                                : AppColors.textSoft,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            question.options[index],
+                                            style: TextStyle(
+                                              fontSize: 13.5,
+                                              height: 1.3,
+                                              fontWeight: FontWeight.w600,
+                                              color: showResult && isCorrect
+                                                  ? const Color(0xFF178343)
+                                                  : showResult && selected
+                                                      ? const Color(0xFFD64545)
+                                                      : AppColors.text,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 14),
+                          _QuestionNavigator(
+                            total: questions.length,
+                            currentIndex: _currentIndex,
+                            answeredStates: _answers,
+                            correctAnswers: questions
+                                .map((question) => question.correctIndex)
+                                .toList(),
+                            onTap: (index) {
+                              setState(() {
+                                _currentIndex = index;
+                                _selectedIndex = _answerFor(index);
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton(
+                      onPressed: _selectedIndex == null
+                          ? null
+                          : () => _handleNext(
+                                questions: questions,
+                                isLast: isLast,
+                              ),
+                      style: FilledButton.styleFrom(
+                        disabledForegroundColor: const Color(0xFFB6C5E6),
+                        disabledBackgroundColor: const Color(0xFF0F5CC1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(isLast ? 'Yakunlash' : 'Keyingi'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () => _finishNow(questions),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: const Text('Yakunlash'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _questionImageUrl(TopicQuestion question) {
+    final image = question.image.trim();
+    if (image.isEmpty) return null;
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    if (image.startsWith('/')) {
+      return '$apiBaseUrl$image';
+    }
+    return null;
+  }
+
+  int? _answerFor(int index) {
+    if (index < 0 || index >= _answers.length) return null;
+    return _answers[index];
+  }
+
+  void _saveAnswer(int questionIndex, int answerIndex) {
+    while (_answers.length <= questionIndex) {
+      _answers.add(null);
+    }
+    _answers[questionIndex] = answerIndex;
+  }
+
+  Future<void> _handleNext({
+    required List<TopicQuestion> questions,
+    required bool isLast,
+  }) async {
+    if (_selectedIndex == null) return;
+
+    _saveAnswer(_currentIndex, _selectedIndex!);
+
+    if (isLast) {
+      final correct = _countCorrect(questions, _answers);
+      final total = questions.length;
+      final wrong = total - correct;
+      final percent = total == 0 ? 0 : ((correct / total) * 100).round();
+      if (!_resultShown && mounted) {
+        _resultShown = true;
+        await _showResultModal(
+          correct: correct,
+          wrong: wrong,
+          total: total,
+          percent: percent,
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _currentIndex += 1;
+      _selectedIndex = _answerFor(_currentIndex);
+    });
+  }
+
+  Future<void> _finishNow(List<TopicQuestion> questions) async {
+    if (_selectedIndex != null) {
+      _saveAnswer(_currentIndex, _selectedIndex!);
+    }
+
+    final correct = _countCorrect(questions, _answers);
+    final total = questions.length;
+    final wrong = total - correct;
+    final percent = total == 0 ? 0 : ((correct / total) * 100).round();
+    if (!_resultShown && mounted) {
+      _resultShown = true;
+      await _showResultModal(
+        correct: correct,
+        wrong: wrong,
+        total: total,
+        percent: percent,
+      );
+    }
+  }
+
+  int _countCorrect(List<TopicQuestion> questions, List<int?> answers) {
+    var correct = 0;
+    for (var index = 0; index < questions.length; index++) {
+      final answer = index < answers.length ? answers[index] : null;
+      if (answer != null && answer == questions[index].correctIndex) {
+        correct += 1;
+      }
+    }
+    return correct;
+  }
+
+  Future<void> _showResultModal({
+    required int correct,
+    required int wrong,
+    required int total,
+    required int percent,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Natija',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _ResultRow(label: 'To‘g‘ri javoblar', value: '$correct'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Noto‘g‘ri javoblar', value: '$wrong'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Jami savollar', value: '$total'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Foiz', value: '$percent%'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Yopish'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openImagePreview(String imageUrl) {
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Preview',
+      barrierColor: Colors.black.withValues(alpha: 0.84),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        padding: const EdgeInsets.all(24),
+                        color: Colors.white,
+                        child: const Text(
+                          'Rasm yuklanmadi',
+                          style: TextStyle(color: AppColors.text),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final fade = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOut,
+        );
+        return FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1).animate(fade),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _QuestionNavigator extends StatelessWidget {
+  const _QuestionNavigator({
+    required this.total,
+    required this.currentIndex,
+    required this.answeredStates,
+    required this.correctAnswers,
+    required this.onTap,
+  });
+
+  final int total;
+  final int currentIndex;
+  final List<int?> answeredStates;
+  final List<int> correctAnswers;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: total,
+        separatorBuilder: (context, index) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final answered = index < answeredStates.length &&
+              answeredStates[index] != null;
+          final isCurrent = index == currentIndex;
+          final isCorrect =
+              answered && answeredStates[index] == correctAnswers[index];
+          final backgroundColor = isCurrent
+              ? const Color(0xFF1F4FD0)
+              : answered
+                  ? isCorrect
+                      ? const Color(0xFF21A65B)
+                      : const Color(0xFFD64545)
+                  : AppColors.surfaceSoft;
+          final borderColor = isCurrent
+              ? const Color(0xFF7FA6FF)
+              : answered
+                  ? isCorrect
+                      ? const Color(0xFF5BC37E)
+                      : const Color(0xFFE06A6A)
+                  : AppColors.border.withValues(alpha: 0.85);
+
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onTap(index),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isCurrent || answered ? Colors.white : AppColors.text,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ResultRow extends StatelessWidget {
+  const _ResultRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FB),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.title,
+    required this.subtitle,
+    required this.buttonText,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String subtitle;
+  final String buttonText;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFECEB),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.menu_book_rounded,
+                color: AppColors.danger,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 180,
+              height: 48,
+              child: FilledButton(
+                onPressed: onPressed,
+                child: Text(buttonText),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
