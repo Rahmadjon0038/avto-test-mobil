@@ -4,9 +4,20 @@ import 'package:http/http.dart' as http;
 
 import '../core/app_constants.dart';
 import '../models/auth_session.dart';
+import '../models/mistake_question.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../models/ticket_summary.dart';
+
+class ApiException implements Exception {
+  ApiException(this.statusCode, this.message);
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
 
 class ApiClient {
   static Map<String, String> _jsonHeaders({String? accessToken}) {
@@ -88,11 +99,14 @@ class ApiClient {
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(body['error']?.toString() ?? 'Session yangilanmadi');
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Session yangilanmadi',
+      );
     }
     final accessToken = body['accessToken']?.toString();
     if (accessToken == null || accessToken.isEmpty) {
-      throw Exception('Access token qaytmadi');
+      throw ApiException(500, 'Access token qaytmadi');
     }
     return AuthSession(
       accessToken: accessToken,
@@ -149,14 +163,182 @@ class ApiClient {
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(body['error']?.toString() ?? 'Biletlar yuklanmadi');
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Biletlar yuklanmadi',
+      );
     }
     final rawTickets = body['tickets'];
     if (rawTickets is! List) return const [];
     return rawTickets
         .whereType<Map>()
-        .map((ticket) => TicketSummary.fromJson(Map<String, dynamic>.from(ticket)))
+        .map(
+          (ticket) => TicketSummary.fromJson(Map<String, dynamic>.from(ticket)),
+        )
         .toList();
+  }
+
+  static Future<List<TicketSummary>> customTests(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/custom-tests'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Sozlamali testlar yuklanmadi',
+      );
+    }
+    final rawTests = body['customTests'];
+    if (rawTests is! List) return const [];
+    return rawTests
+        .whereType<Map>()
+        .map((test) => TicketSummary.fromJson(Map<String, dynamic>.from(test)))
+        .toList();
+  }
+
+  static Future<Map<String, dynamic>?> exam(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/exam'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Imtihon ma’lumoti yuklanmadi',
+      );
+    }
+    final exam = body['exam'];
+    if (exam == null || exam is! Map) return null;
+    return Map<String, dynamic>.from(exam);
+  }
+
+  static Future<Map<String, dynamic>> startExam({
+    required String accessToken,
+    required int count,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/exam/start'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({'count': count}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Imtihon boshlanmadi',
+      );
+    }
+    final exam = body['exam'];
+    if (exam is! Map) {
+      throw ApiException(500, 'Imtihon javobi noto‘g‘ri');
+    }
+    return Map<String, dynamic>.from(exam);
+  }
+
+  static Future<Map<String, dynamic>> examProgress({
+    required String accessToken,
+    required Map<String, int> answers,
+    bool finalize = false,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/exam/progress'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({'answers': answers, 'finalize': finalize}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Imtihon saqlanmadi',
+      );
+    }
+    return body;
+  }
+
+  static Future<void> examReset(String accessToken) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/exam/reset'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Imtihonni qayta boshlash amalga oshmadi',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> answers({
+    required String accessToken,
+    int offset = 0,
+    int limit = 40,
+    String search = '',
+    String filter = 'all',
+  }) async {
+    final params = <String, String>{
+      'offset': '$offset',
+      'limit': '$limit',
+      'q': search,
+      'filter': filter,
+    };
+    final uri = Uri.parse(
+      '$apiBaseUrl/api/answers',
+    ).replace(queryParameters: params);
+    final response = await http.get(
+      uri,
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Savollar yuklanmadi',
+      );
+    }
+    return body;
+  }
+
+  static Future<List<MistakeQuestion>> mistakes(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/mistakes'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Xatolar yuklanmadi',
+      );
+    }
+    final rawQuestions = body['questions'];
+    if (rawQuestions is! List) return const [];
+    return rawQuestions
+        .whereType<Map>()
+        .map(
+          (question) =>
+              MistakeQuestion.fromJson(Map<String, dynamic>.from(question)),
+        )
+        .toList();
+  }
+
+  static Future<Map<String, dynamic>> mistakesProgress({
+    required String accessToken,
+    required Map<String, int> answers,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/mistakes/progress'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({'answers': answers}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(body['error']?.toString() ?? 'Xatolar saqlanmadi');
+    }
+    return body;
   }
 
   static Future<List<TopicQuestion>> ticketQuestions({
@@ -169,7 +351,10 @@ class ApiClient {
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(body['error']?.toString() ?? 'Bilet yuklanmadi');
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Bilet yuklanmadi',
+      );
     }
     final ticket = body['ticket'];
     if (ticket is! Map) {
@@ -179,9 +364,40 @@ class ApiClient {
     if (questions is! List) return const [];
     return questions
         .whereType<Map>()
-        .map((question) => TopicQuestion.fromJson(
-              Map<String, dynamic>.from(question),
-            ))
+        .map(
+          (question) =>
+              TopicQuestion.fromJson(Map<String, dynamic>.from(question)),
+        )
+        .toList();
+  }
+
+  static Future<List<TopicQuestion>> customTestQuestions({
+    required String accessToken,
+    required String testId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/custom-tests/$testId'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Sozlamali test yuklanmadi',
+      );
+    }
+    final customTest = body['customTest'];
+    if (customTest is! Map) {
+      throw Exception('Noto‘g‘ri sozlamali test javobi');
+    }
+    final questions = customTest['questions'];
+    if (questions is! List) return const [];
+    return questions
+        .whereType<Map>()
+        .map(
+          (question) =>
+              TopicQuestion.fromJson(Map<String, dynamic>.from(question)),
+        )
         .toList();
   }
 
@@ -207,9 +423,7 @@ class ApiClient {
         continue;
       }
       if (response.statusCode >= 400) {
-        throw Exception(
-          body['error']?.toString() ?? 'Savollar yuklanmadi',
-        );
+        throw Exception(body['error']?.toString() ?? 'Savollar yuklanmadi');
       }
 
       final questions = _extractQuestions(body);
@@ -236,9 +450,9 @@ class ApiClient {
       if (candidate is List) {
         return candidate
             .whereType<Map>()
-            .map((item) => TopicQuestion.fromJson(
-                  Map<String, dynamic>.from(item),
-                ))
+            .map(
+              (item) => TopicQuestion.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
       }
     }

@@ -7,8 +7,8 @@ import '../models/ticket_summary.dart';
 import '../models/topic_question.dart';
 import '../services/api_client.dart';
 
-class TicketTestPage extends StatefulWidget {
-  const TicketTestPage({
+class CustomTestPage extends StatefulWidget {
+  const CustomTestPage({
     super.key,
     required this.session,
     required this.ticket,
@@ -18,10 +18,10 @@ class TicketTestPage extends StatefulWidget {
   final TicketSummary ticket;
 
   @override
-  State<TicketTestPage> createState() => _TicketTestPageState();
+  State<CustomTestPage> createState() => _CustomTestPageState();
 }
 
-class _TicketTestPageState extends State<TicketTestPage> {
+class _CustomTestPageState extends State<CustomTestPage> {
   late Future<List<TopicQuestion>> _questionsFuture;
   final List<int?> _answers = <int?>[];
   int _currentIndex = 0;
@@ -41,9 +41,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
   Future<List<TopicQuestion>> _loadQuestions() async {
     try {
-      return await ApiClient.ticketQuestions(
+      return await ApiClient.customTestQuestions(
         accessToken: _accessToken,
-        ticketId: widget.ticket.id,
+        testId: widget.ticket.id,
       );
     } on ApiException catch (error) {
       final refreshToken = widget.session.refreshToken;
@@ -60,9 +60,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
         _accessToken = refreshed.accessToken;
       });
 
-      return ApiClient.ticketQuestions(
+      return ApiClient.customTestQuestions(
         accessToken: refreshed.accessToken,
-        ticketId: widget.ticket.id,
+        testId: widget.ticket.id,
       );
     }
   }
@@ -93,9 +93,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
                 if (snapshot.hasError) {
                   return _EmptyState(
-                    title: 'Bu biletda testlar mavjud emas',
+                    title: 'Bu testda savollar mavjud emas',
                     subtitle:
-                        'Hozircha ushbu bilet uchun savollar qo‘shilmagan.',
+                        'Hozircha ushbu test uchun savollar qo‘shilmagan.',
                     buttonText: 'Ortga qaytish',
                     onPressed: () => Navigator.of(context).pop(),
                   );
@@ -104,9 +104,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
                 final questions = snapshot.data ?? const <TopicQuestion>[];
                 if (questions.isEmpty) {
                   return _EmptyState(
-                    title: 'Bu biletda testlar mavjud emas',
+                    title: 'Bu testda savollar mavjud emas',
                     subtitle:
-                        'Hozircha ushbu bilet uchun savollar qo‘shilmagan.',
+                        'Hozircha ushbu test uchun savollar qo‘shilmagan.',
                     buttonText: 'Ortga qaytish',
                     onPressed: () => Navigator.of(context).pop(),
                   );
@@ -261,20 +261,18 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(18),
                                   child: InkWell(
-                                    onTap: _answerFor(_currentIndex) != null
-                                        ? null
-                                        : () {
+                                    onTap: _selectedIndex == null
+                                        ? () {
                                             setState(() {
                                               _selectedIndex = index;
                                             });
                                             _saveAnswer(_currentIndex, index);
-                                            final questions = _loadedQuestions;
-                                            if (questions != null &&
-                                                _currentIndex <
-                                                    questions.length - 1) {
+                                            if (_currentIndex <
+                                                questions.length - 1) {
                                               _advanceToNextQuestion();
                                             }
-                                          },
+                                          }
+                                        : null,
                                     borderRadius: BorderRadius.circular(18),
                                     child: AnimatedContainer(
                                       duration: const Duration(
@@ -366,7 +364,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                         SizedBox(
                           height: 46,
                           child: FilledButton.tonal(
-                            onPressed: _restartTest,
+                            onPressed: _restartCurrentTest,
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFFF4D1D1),
                               foregroundColor: const Color(0xFFD64545),
@@ -476,24 +474,6 @@ class _TicketTestPageState extends State<TicketTestPage> {
     _scrollCurrentQuestionIntoView();
   }
 
-  Future<void> _restartTest() async {
-    setState(() {
-      _currentIndex = 0;
-      _selectedIndex = null;
-      _answers.clear();
-      _resultShown = false;
-      _loadedQuestions = null;
-      _questionsFuture = _loadQuestions();
-    });
-  }
-
-  void _advanceToNextQuestion() {
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (!mounted) return;
-      _goToNextQuestion();
-    });
-  }
-
   void _scrollCurrentQuestionIntoView() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentContext = _questionCardKey.currentContext;
@@ -504,6 +484,24 @@ class _TicketTestPageState extends State<TicketTestPage> {
         curve: Curves.easeInOut,
         alignment: 0.45,
       );
+    });
+  }
+
+  void _restartCurrentTest() {
+    setState(() {
+      _answers.clear();
+      _currentIndex = 0;
+      _selectedIndex = null;
+      _resultShown = false;
+      _loadedQuestions = null;
+      _questionsFuture = _loadQuestions();
+    });
+  }
+
+  void _advanceToNextQuestion() {
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      _goToNextQuestion();
     });
   }
 

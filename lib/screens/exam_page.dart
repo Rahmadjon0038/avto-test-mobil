@@ -1,0 +1,1118 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import '../core/app_colors.dart';
+import '../core/app_constants.dart';
+import '../models/auth_session.dart';
+import '../models/exam_question.dart';
+import '../services/api_client.dart';
+
+class ExamPage extends StatefulWidget {
+  const ExamPage({super.key, required this.session});
+
+  final AuthSession session;
+
+  @override
+  State<ExamPage> createState() => _ExamPageState();
+}
+
+class _ExamPageState extends State<ExamPage> {
+  late String _accessToken;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _questionCardKey = GlobalKey();
+  final Map<String, int> _answers = <String, int>{};
+  final List<ExamQuestion> _questions = <ExamQuestion>[];
+
+  Timer? _timer;
+  Timer? _autoNextTimer;
+
+  int _currentIndex = 0;
+  int _secondsLeft = 0;
+  int _score = 0;
+  bool _isLoading = true;
+  bool _sessionExpired = false;
+  bool _completed = false;
+  bool _expired = false;
+  bool _submitting = false;
+  String? _loadError;
+  DateTime? _expiresAt;
+
+  ExamQuestion? get _currentQuestion =>
+      _currentIndex >= 0 && _currentIndex < _questions.length
+      ? _questions[_currentIndex]
+      : null;
+
+  bool get _locked => _completed || _expired || _sessionExpired;
+
+  @override
+  void initState() {
+    super.initState();
+    _accessToken = widget.session.accessToken;
+    _bootstrapExam();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _autoNextTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _bootstrapExam() async {
+    setState(() {
+      _isLoading = true;
+      _sessionExpired = false;
+      _completed = false;
+      _expired = false;
+      _loadError = null;
+      _answers.clear();
+      _questions.clear();
+      _currentIndex = 0;
+      _secondsLeft = 0;
+      _score = 0;
+      _expiresAt = null;
+    });
+
+    try {
+      Map<String, dynamic>? exam = await ApiClient.exam(_accessToken);
+      exam ??= await ApiClient.startExam(accessToken: _accessToken, count: 20);
+      if (!mounted) return;
+      _applyExam(exam);
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 &&
+          widget.session.refreshToken != null &&
+          widget.session.refreshToken!.isNotEmpty) {
+        final refreshed = await _refreshAccessToken();
+        if (!refreshed || !mounted) return;
+        await _bootstrapExam();
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _loadError = error.message;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<bool> _refreshAccessToken() async {
+    final refreshToken = widget.session.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      if (!mounted) return false;
+      setState(() {
+        _sessionExpired = true;
+        _isLoading = false;
+      });
+      return false;
+    }
+
+    try {
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return false;
+      setState(() {
+        _accessToken = refreshed.accessToken;
+      });
+      return true;
+    } on ApiException {
+      if (!mounted) return false;
+      setState(() {
+        _sessionExpired = true;
+        _isLoading = false;
+      });
+      return false;
+    }
+  }
+
+  void _applyExam(Map<String, dynamic> exam) {
+    final rawQuestions = exam['questions'];
+    final questions = rawQuestions is List
+        ? rawQuestions
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    ExamQuestion.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList()
+        : <ExamQuestion>[];
+
+    final rawAnswers = exam['answers'];
+    final answers = <String, int>{};
+    if (rawAnswers is Map) {
+      for (final entry in rawAnswers.entries) {
+        final value = int.tryParse(entry.value?.toString() ?? '');
+        if (value != null) {
+          answers[entry.key.toString()] = value;
+        }
+      }
+    }
+
+    _timer?.cancel();
+    _questions
+      ..clear()
+      ..addAll(questions);
+    _answers
+      ..clear()
+      ..addAll(answers);
+    _currentIndex = 0;
+    _completed = exam['completed'] == true;
+    _expired = exam['expired'] == true;
+    _score = int.tryParse(exam['score']?.toString() ?? '') ?? 0;
+    _secondsLeft =
+        int.tryParse(exam['remainingSeconds']?.toString() ?? '') ?? 0;
+    _expiresAt = exam['expiresAt'] == null
+        ? null
+        : DateTime.tryParse(exam['expiresAt'].toString());
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    if (_expiresAt == null || _locked) return;
+
+    void tick() {
+      final remaining = _expiresAt == null
+          ? 0
+          : (_expiresAt!.difference(DateTime.now()).inSeconds > 0
+                ? _expiresAt!.difference(DateTime.now()).inSeconds
+                : 0);
+      if (!mounted) return;
+      setState(() {
+        _secondsLeft = remaining;
+        _expired = remaining == 0 && !_completed;
+      });
+      if (remaining == 0 && !_completed && !_sessionExpired && !_submitting) {
+        _finishExam();
+      }
+    }
+
+    tick();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+  }
+
+  Future<Map<String, dynamic>?> _submitProgress({
+    required bool finalize,
+  }) async {
+    if (_sessionExpired) return null;
+    _submitting = true;
+    try {
+      return await ApiClient.examProgress(
+        accessToken: _accessToken,
+        answers: _answers,
+        finalize: finalize,
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 &&
+          widget.session.refreshToken != null &&
+          widget.session.refreshToken!.isNotEmpty) {
+        final refreshed = await _refreshAccessToken();
+        if (!refreshed) return null;
+        try {
+          return await ApiClient.examProgress(
+            accessToken: _accessToken,
+            answers: _answers,
+            finalize: finalize,
+          );
+        } on ApiException catch (retryError) {
+          if (!mounted) return null;
+          setState(() {
+            _loadError = retryError.message;
+            _sessionExpired = retryError.statusCode == 401;
+          });
+          return null;
+        }
+      }
+
+      if (!mounted) return null;
+      setState(() {
+        _loadError = error.message;
+      });
+      return null;
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  void _saveAnswer(int questionIndex, int answerIndex) {
+    if (questionIndex < 0 || questionIndex >= _questions.length) return;
+    final question = _questions[questionIndex];
+    if (_answers.containsKey(question.id) || _locked) return;
+
+    setState(() {
+      _answers[question.id] = answerIndex;
+    });
+
+    _submitProgress(finalize: false);
+
+    if (_currentIndex < _questions.length - 1) {
+      _scheduleAutoNext(_currentIndex + 1);
+    }
+  }
+
+  void _scheduleAutoNext(int nextIndex) {
+    _autoNextTimer?.cancel();
+    _autoNextTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (!mounted || _locked) return;
+      if (_currentIndex != nextIndex - 1) return;
+      setState(() {
+        _currentIndex = nextIndex;
+      });
+      _scrollCurrentQuestionIntoView();
+    });
+  }
+
+  void _scrollCurrentQuestionIntoView() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentContext = _questionCardKey.currentContext;
+      if (currentContext == null) return;
+      Scrollable.ensureVisible(
+        currentContext,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeInOut,
+        alignment: 0.45,
+      );
+    });
+  }
+
+  int _countCorrect() {
+    var correct = 0;
+    for (final question in _questions) {
+      final selected = _answers[question.id];
+      if (selected != null && selected == question.correctIndex) {
+        correct += 1;
+      }
+    }
+    return correct;
+  }
+
+  Future<void> _finishExam() async {
+    if (_locked) return;
+    final response = await _submitProgress(finalize: true);
+    if (!mounted || response == null) return;
+
+    final total =
+        int.tryParse(response['total']?.toString() ?? '') ?? _questions.length;
+    final serverScore =
+        int.tryParse(response['score']?.toString() ?? '') ?? _countCorrect();
+    final correct = serverScore;
+    final wrong = total > correct ? total - correct : 0;
+    final percent = total > 0 ? ((correct / total) * 100).round() : 0;
+
+    setState(() {
+      _completed =
+          response['completed'] == true || response['finalize'] == true;
+      _expired = response['expired'] == true;
+      _score = correct;
+    });
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Natija',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _ResultRow(label: 'To‘g‘ri javoblar', value: '$correct'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Noto‘g‘ri javoblar', value: '$wrong'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Jami savollar', value: '$total'),
+                const SizedBox(height: 10),
+                _ResultRow(label: 'Foiz', value: '$percent%'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Yopish'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _restartExam() async {
+    if (_submitting) return;
+    try {
+      await ApiClient.examReset(_accessToken);
+      if (!mounted) return;
+      await _bootstrapExam();
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 &&
+          widget.session.refreshToken != null &&
+          widget.session.refreshToken!.isNotEmpty) {
+        final refreshed = await _refreshAccessToken();
+        if (!refreshed) return;
+        await _restartExam();
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _loadError = error.message;
+      });
+    }
+  }
+
+  String _questionImageUrl(ExamQuestion question) {
+    final image = question.image.trim();
+    if (image.isEmpty) return 'assets/default.png';
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    if (image.startsWith('/')) {
+      return '$apiBaseUrl$image';
+    }
+    return 'assets/default.png';
+  }
+
+  Widget _buildQuestionImage(ExamQuestion question) {
+    final imageUrl = _questionImageUrl(question);
+    if (imageUrl == 'assets/default.png') {
+      return Image.asset(
+        imageUrl,
+        width: double.infinity,
+        fit: BoxFit.fitWidth,
+        alignment: Alignment.center,
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      width: double.infinity,
+      fit: BoxFit.fitWidth,
+      alignment: Alignment.center,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return const SizedBox(
+          height: 120,
+          width: double.infinity,
+          child: Center(
+            child: SizedBox(
+              height: 28,
+              width: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset(
+          'assets/default.png',
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.center,
+        );
+      },
+    );
+  }
+
+  Future<void> _openImagePreview(String imageUrl) {
+    final isAsset = imageUrl == 'assets/default.png';
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Preview',
+      barrierColor: Colors.black.withValues(alpha: 0.84),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: isAsset
+                        ? Image.asset(imageUrl, fit: BoxFit.contain)
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  height: 34,
+                                  width: 34,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.6,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
+                                  'assets/default.png',
+                                  fit: BoxFit.contain,
+                                ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+        return FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1).animate(fade),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final question = _currentQuestion;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _sessionExpired
+              ? _CenteredMessage(
+                  title: 'Sessiya tugadi',
+                  subtitle: 'Qayta kirish kerak.',
+                  actionText: 'Ortga qaytish',
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : _loadError != null && _questions.isEmpty
+              ? _CenteredMessage(
+                  title: 'Imtihon yuklanmadi',
+                  subtitle: _loadError!,
+                  actionText: 'Qayta urinib ko‘rish',
+                  onPressed: _bootstrapExam,
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Material(
+                          color: Colors.white,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).pop(),
+                            customBorder: const CircleBorder(),
+                            child: const SizedBox(
+                              width: 46,
+                              height: 46,
+                              child: Icon(Icons.arrow_back_rounded),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Imtihon topshirish',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.text,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_currentIndex + 1}/${_questions.length} savol',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _TimerChip(secondsLeft: _secondsLeft),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    if (_completed || _expired)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F8FB),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppColors.border.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _completed
+                                        ? 'Imtihon yakunlandi'
+                                        : 'Vaqt tugadi',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.text,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'To‘g‘ri javoblar: $_score/${_questions.length}',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              height: 40,
+                              child: FilledButton.tonal(
+                                onPressed: _restartExam,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF4D1D1),
+                                  foregroundColor: const Color(0xFFD64545),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                ),
+                                child: const Text('Yangi imtihon'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_completed || _expired) const SizedBox(height: 14),
+                    Expanded(
+                      child: question == null
+                          ? const SizedBox.shrink()
+                          : SingleChildScrollView(
+                              controller: _scrollController,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 18),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 42,
+                                      child: ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
+                                        itemCount: _questions.length,
+                                        separatorBuilder: (context, index) =>
+                                            const SizedBox(width: 6),
+                                        itemBuilder: (context, index) {
+                                          final answered = _answers.containsKey(
+                                            _questions[index].id,
+                                          );
+                                          final isCurrent =
+                                              index == _currentIndex;
+                                          final isCorrect =
+                                              answered &&
+                                              _answers[_questions[index].id] ==
+                                                  _questions[index]
+                                                      .correctIndex;
+                                          final backgroundColor = isCurrent
+                                              ? const Color(0xFF1F4FD0)
+                                              : answered
+                                              ? isCorrect
+                                                    ? const Color(0xFF21A65B)
+                                                    : const Color(0xFFD64545)
+                                              : AppColors.surfaceSoft;
+                                          final borderColor = isCurrent
+                                              ? const Color(0xFF7FA6FF)
+                                              : answered
+                                              ? isCorrect
+                                                    ? const Color(0xFF5BC37E)
+                                                    : const Color(0xFFE06A6A)
+                                              : AppColors.border.withValues(
+                                                  alpha: 0.85,
+                                                );
+
+                                          return Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () {
+                                                setState(() {
+                                                  _currentIndex = index;
+                                                });
+                                                _scrollCurrentQuestionIntoView();
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: Container(
+                                                width: 34,
+                                                height: 34,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: backgroundColor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: borderColor,
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  '${index + 1}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: isCurrent || answered
+                                                        ? Colors.white
+                                                        : AppColors.text,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Container(
+                                      key: _questionCardKey,
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(18),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(22),
+                                        border: Border.all(
+                                          color: AppColors.border.withValues(
+                                            alpha: 0.72,
+                                          ),
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x08000000),
+                                            blurRadius: 14,
+                                            offset: Offset(0, 8),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            question.text,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              height: 1.28,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.text,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          GestureDetector(
+                                            onTap: () => _openImagePreview(
+                                              _questionImageUrl(question),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              child: _buildQuestionImage(
+                                                question,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ...List.generate(question.options.length, (
+                                      index,
+                                    ) {
+                                      final selected =
+                                          _answers[question.id] == index;
+                                      final isCorrect =
+                                          index == question.correctIndex;
+                                      final showResult = _answers.containsKey(
+                                        question.id,
+                                      );
+                                      final backgroundColor = showResult
+                                          ? isCorrect
+                                                ? const Color(0xFFCFF0D9)
+                                                : selected
+                                                ? const Color(0xFFF4C5C5)
+                                                : Colors.white
+                                          : selected
+                                          ? AppColors.surfaceTint
+                                          : Colors.white;
+                                      final borderColor = showResult
+                                          ? isCorrect
+                                                ? const Color(0xFF6CBF86)
+                                                : selected
+                                                ? const Color(0xFFDD6B6B)
+                                                : AppColors.border.withValues(
+                                                    alpha: 0.72,
+                                                  )
+                                          : selected
+                                          ? AppColors.primary.withValues(
+                                              alpha: 0.28,
+                                            )
+                                          : AppColors.border.withValues(
+                                              alpha: 0.72,
+                                            );
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 10,
+                                        ),
+                                        child: Material(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                          child: InkWell(
+                                            onTap: _locked
+                                                ? null
+                                                : () => _saveAnswer(
+                                                    _currentIndex,
+                                                    index,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              18,
+                                            ),
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 180,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 15,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: backgroundColor,
+                                                borderRadius:
+                                                    BorderRadius.circular(18),
+                                                border: Border.all(
+                                                  color: borderColor,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 28,
+                                                    height: 28,
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          showResult &&
+                                                              isCorrect
+                                                          ? const Color(
+                                                              0xFF21A65B,
+                                                            )
+                                                          : showResult &&
+                                                                selected
+                                                          ? const Color(
+                                                              0xFFD64545,
+                                                            )
+                                                          : const Color(
+                                                              0xFFE9EDF6,
+                                                            ),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      showResult && isCorrect
+                                                          ? Icons.check_rounded
+                                                          : showResult &&
+                                                                selected
+                                                          ? Icons.close_rounded
+                                                          : Icons
+                                                                .circle_outlined,
+                                                      size: 16,
+                                                      color:
+                                                          showResult &&
+                                                              (isCorrect ||
+                                                                  selected)
+                                                          ? Colors.white
+                                                          : AppColors.textSoft,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(
+                                                      question.options[index],
+                                                      style: TextStyle(
+                                                        fontSize: 13.5,
+                                                        height: 1.3,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color:
+                                                            showResult &&
+                                                                isCorrect
+                                                            ? const Color(
+                                                                0xFF178343,
+                                                              )
+                                                            : showResult &&
+                                                                  selected
+                                                            ? const Color(
+                                                                0xFFD64545,
+                                                              )
+                                                            : AppColors.text,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    SafeArea(
+                      top: false,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: FilledButton.tonal(
+                                onPressed: _locked ? null : _finishExam,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFFBCD2FF),
+                                  foregroundColor: const Color(0xFF0A4DB5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text('Yakunlash'),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            height: 46,
+                            child: FilledButton.tonal(
+                              onPressed: _restartExam,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFF4D1D1),
+                                foregroundColor: const Color(0xFFD64545),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                              ),
+                              child: const Text('Qayta boshlash'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimerChip extends StatelessWidget {
+  const _TimerChip({required this.secondsLeft});
+
+  final int secondsLeft;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = (secondsLeft ~/ 60).toString().padLeft(2, '0');
+    final seconds = (secondsLeft % 60).toString().padLeft(2, '0');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+      ),
+      child: Text(
+        '$minutes:$seconds',
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: AppColors.text,
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultRow extends StatelessWidget {
+  const _ResultRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FB),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({
+    required this.title,
+    required this.subtitle,
+    required this.actionText,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String subtitle;
+  final String actionText;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFECEB),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.flag_rounded,
+                color: AppColors.danger,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 180,
+              height: 48,
+              child: FilledButton(
+                onPressed: onPressed,
+                child: Text(actionText),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

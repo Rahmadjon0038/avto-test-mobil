@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
+import 'custom_tests_page.dart';
+import 'answers_page.dart';
+import 'exam_page.dart';
+import 'mistakes_page.dart';
 import 'tickets_page.dart';
 import 'topics_page.dart';
+import 'marathon_page.dart';
 import '../widgets/top_bar.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -27,15 +32,19 @@ class HomeScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF7F9FF), AppColors.background, Color(0xFFF7F8FC)],
+            colors: [
+              Color(0xFFF7F9FF),
+              AppColors.background,
+              Color(0xFFF7F8FC),
+            ],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 TopBar(
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -106,13 +115,13 @@ class HomeScreen extends StatelessWidget {
                                 color: Colors.white70,
                               ),
                             ),
-                                    const SizedBox(height: 16),
-                                    SizedBox(
-                                      height: 40,
-                                      width: 118,
-                                      child: FilledButton(
-                                        onPressed: () =>
-                                            _openSection(context, 'Video darsliklar'),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              height: 40,
+                              width: 118,
+                              child: FilledButton(
+                                onPressed: () =>
+                                    _openSection(context, 'Video darsliklar'),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1F4FD0),
                                   shape: RoundedRectangleBorder(
@@ -120,41 +129,41 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   elevation: 0,
                                 ),
-                                        child: const FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'Boshlash',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                              SizedBox(width: 8),
-                                              Icon(
-                                                Icons.play_arrow_rounded,
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
-                                            ],
-                                          ),
+                                child: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Boshlash',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: 8),
+                                      Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              const Icon(
-                                Icons.play_circle_fill_rounded,
-                                color: Colors.white,
-                                size: 78,
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Icon(
+                        Icons.play_circle_fill_rounded,
+                        color: Colors.white,
+                        size: 78,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Column(
                   children: [
@@ -191,24 +200,30 @@ class HomeScreen extends StatelessWidget {
                       icon: Icons.tune_rounded,
                       iconColor: const Color(0xFF8E6BFF),
                       title: 'Sozlamali testlar',
-                      onTap: () => _openSection(context, 'Sozlamali testlar'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CustomTestsPage(session: session),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     _SectionCard(
                       icon: Icons.close_rounded,
                       iconColor: const Color(0xFFEE5A73),
                       title: 'Mening xatolarim',
-                      onTap: () => _openSection(context, 'Mening xatolarim'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MistakesPage(session: session),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     _SectionCard(
                       icon: Icons.menu_book_rounded,
                       iconColor: const Color(0xFFF5A623),
                       title: 'Barcha testlar javoblari',
-                      onTap: () => _openSection(
-                        context,
-                        'Barcha testlar javoblari',
-                      ),
+                      onTap: () =>
+                          _openSection(context, 'Barcha testlar javoblari'),
                     ),
                     const SizedBox(height: 10),
                     _SectionCard(
@@ -230,11 +245,27 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _openSection(BuildContext context, String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SectionPage(title: title),
-      ),
-    );
+    if (title == 'Marafon rejimi') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => MarathonPage(session: session)));
+      return;
+    }
+    if (title == 'Barcha testlar javoblari') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => AnswersPage(session: session)));
+      return;
+    }
+    if (title == 'Imtihon topshirish') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => ExamPage(session: session)));
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => SectionPage(title: title)));
   }
 
   void _openProfileSheet(BuildContext context) {
@@ -433,9 +464,7 @@ class _SectionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.75),
-            ),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x08000000),
@@ -492,9 +521,7 @@ class _SocialFooter extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.border.withValues(alpha: 0.72),
-        ),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.72)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -508,7 +535,7 @@ class _SocialFooter extends StatelessWidget {
           const Text(
             'Bizni kuzating',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: AppColors.textMuted,
             ),
@@ -534,26 +561,7 @@ class _SocialFooter extends StatelessWidget {
                   onTap: () {},
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _SocialIconButton(
-                  icon: Icons.play_circle_fill_rounded,
-                  label: 'YouTube',
-                  color: const Color(0xFFFF0000),
-                  onTap: () {},
-                ),
-              ),
             ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Dastur ishlab chiquvchi: Abdullayev Rahmadjon',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSoft,
-            ),
           ),
         ],
       ),
@@ -582,23 +590,22 @@ class _SocialIconButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: color.withValues(alpha: 0.18)),
           ),
-          child: Column(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(height: 4),
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
               Text(
                 label,
-                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                   color: color,
                 ),

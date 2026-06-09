@@ -1,0 +1,49 @@
+class ExamQuestion {
+  ExamQuestion({
+    required this.id,
+    required this.kind,
+    required this.sourceId,
+    required this.sourceTitle,
+    required this.questionIndex,
+    required this.text,
+    required this.options,
+    required this.correctIndex,
+    required this.correctAnswer,
+    required this.explanation,
+    required this.image,
+    required this.hasImage,
+  });
+
+  final String id;
+  final String kind;
+  final String sourceId;
+  final String sourceTitle;
+  final int questionIndex;
+  final String text;
+  final List<String> options;
+  final int correctIndex;
+  final String correctAnswer;
+  final String explanation;
+  final String image;
+  final bool hasImage;
+
+  factory ExamQuestion.fromJson(Map<String, dynamic> json) {
+    final rawOptions = json['options'];
+    return ExamQuestion(
+      id: (json['id'] ?? '').toString(),
+      kind: (json['kind'] ?? '').toString(),
+      sourceId: (json['sourceId'] ?? '').toString(),
+      sourceTitle: (json['sourceTitle'] ?? '').toString(),
+      questionIndex: int.tryParse(json['questionIndex']?.toString() ?? '') ?? 0,
+      text: (json['text'] ?? '').toString(),
+      options: rawOptions is List
+          ? rawOptions.map((option) => option.toString()).toList()
+          : const <String>[],
+      correctIndex: int.tryParse(json['correctIndex']?.toString() ?? '') ?? 0,
+      correctAnswer: (json['correctAnswer'] ?? '').toString(),
+      explanation: (json['explanation'] ?? '').toString(),
+      image: (json['image'] ?? '').toString(),
+      hasImage: json['hasImage'] == true,
+    );
+  }
+}

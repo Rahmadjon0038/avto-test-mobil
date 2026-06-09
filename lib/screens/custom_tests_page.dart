@@ -4,18 +4,18 @@ import '../core/app_colors.dart';
 import '../models/auth_session.dart';
 import '../models/ticket_summary.dart';
 import '../services/api_client.dart';
-import 'ticket_test_page.dart';
+import 'custom_test_page.dart';
 
-class TicketsPage extends StatefulWidget {
-  const TicketsPage({super.key, required this.session});
+class CustomTestsPage extends StatefulWidget {
+  const CustomTestsPage({super.key, required this.session});
 
   final AuthSession session;
 
   @override
-  State<TicketsPage> createState() => _TicketsPageState();
+  State<CustomTestsPage> createState() => _CustomTestsPageState();
 }
 
-class _TicketsPageState extends State<TicketsPage> {
+class _CustomTestsPageState extends State<CustomTestsPage> {
   late Future<List<TicketSummary>> _ticketsFuture;
   late String _accessToken;
 
@@ -28,7 +28,7 @@ class _TicketsPageState extends State<TicketsPage> {
 
   Future<List<TicketSummary>> _loadTickets() async {
     try {
-      return await ApiClient.tickets(_accessToken);
+      return await ApiClient.customTests(_accessToken);
     } on ApiException catch (error) {
       if (error.statusCode != 401 || widget.session.refreshToken == null || widget.session.refreshToken!.isEmpty) {
         rethrow;
@@ -41,7 +41,7 @@ class _TicketsPageState extends State<TicketsPage> {
         _accessToken = refreshed.accessToken;
       });
 
-      return ApiClient.tickets(refreshed.accessToken);
+      return ApiClient.customTests(refreshed.accessToken);
     }
   }
 
@@ -95,7 +95,7 @@ class _TicketsPageState extends State<TicketsPage> {
                               : () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => TicketTestPage(
+                                      builder: (_) => CustomTestPage(
                                         session: widget.session,
                                         ticket: ticket,
                                       ),
@@ -140,7 +140,7 @@ class _TicketsHeader extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         const Text(
-          'Biletlar',
+          'Sozlamali testlar',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -259,7 +259,7 @@ class _TicketsEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        'Biletlar topilmadi',
+        'Sozlamali testlar topilmadi',
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
