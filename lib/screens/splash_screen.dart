@@ -23,29 +23,18 @@ class SplashScreen extends StatelessWidget {
             children: [
               Image.asset(
                 'assets/logo.png',
-                width: 92,
-                height: 92,
+                width: 132,
+                height: 132,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 14),
-              const Text.rich(
-                TextSpan(
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    fontStyle: FontStyle.italic,
-                    letterSpacing: -0.8,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'ROAD ',
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                    TextSpan(
-                      text: 'TEST',
-                      style: TextStyle(color: AppColors.text),
-                    ),
-                  ],
+              const SizedBox(height: 16),
+              const Text(
+                'Road-test',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.7,
+                  color: AppColors.text,
                 ),
               ),
             ],

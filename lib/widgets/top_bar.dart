@@ -10,7 +10,7 @@ class TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: EdgeInsets.zero,
       child: DecoratedBox(
         decoration: const BoxDecoration(
           color: Colors.white,

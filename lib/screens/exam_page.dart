@@ -629,8 +629,8 @@ class _ExamPageState extends State<ExamPage> {
                               child: FilledButton.tonal(
                                 onPressed: _restartExam,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF4D1D1),
-                                  foregroundColor: const Color(0xFFD64545),
+                                  backgroundColor: const Color(0xFFDCE9FF),
+                                  foregroundColor: const Color(0xFF0A4DB5),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                   ),
@@ -938,6 +938,12 @@ class _ExamPageState extends State<ExamPage> {
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFFBCD2FF),
                                   foregroundColor: const Color(0xFF0A4DB5),
+                                  disabledForegroundColor: const Color(
+                                    0xFF5C85C9,
+                                  ),
+                                  disabledBackgroundColor: const Color(
+                                    0xFFDCE9FF,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),

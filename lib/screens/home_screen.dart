@@ -269,8 +269,21 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _openProfileSheet(BuildContext context) {
-    final fullName = session.user['fullName']?.toString().trim();
-    final phone = session.user['phone']?.toString().trim();
+    final fullName = session.userName;
+    final phoneCandidates = <String?>[
+      session.user['phone']?.toString(),
+      session.user['phoneNumber']?.toString(),
+      session.user['mobile']?.toString(),
+      session.user['tel']?.toString(),
+    ];
+    String? phone;
+    for (final candidate in phoneCandidates) {
+      final value = candidate?.trim();
+      if (value != null && value.isNotEmpty) {
+        phone = value;
+        break;
+      }
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -341,9 +354,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              fullName?.isNotEmpty == true
-                                  ? fullName!
-                                  : 'Foydalanuvchi',
+                              fullName.isNotEmpty ? fullName : 'Foydalanuvchi',
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
@@ -357,9 +368,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 18),
                   _ProfileInfoRow(
                     label: 'Ism',
-                    value: fullName?.isNotEmpty == true
-                        ? fullName!
-                        : 'Belgilanmagan',
+                    value: fullName.isNotEmpty ? fullName : 'Belgilanmagan',
                   ),
                   const SizedBox(height: 10),
                   _ProfileInfoRow(
@@ -532,15 +541,6 @@ class _SocialFooter extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text(
-            'Bizni kuzating',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

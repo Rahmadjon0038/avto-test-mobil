@@ -10,8 +10,18 @@ class AuthSession {
   final Map<String, dynamic> user;
 
   String get userName {
-    final fullName = user['fullName']?.toString().trim();
-    if (fullName != null && fullName.isNotEmpty) return fullName;
+    final candidates = <String?>[
+      user['fullName']?.toString(),
+      user['full_name']?.toString(),
+      user['fullname']?.toString(),
+      user['name']?.toString(),
+      user['firstName']?.toString(),
+      user['first_name']?.toString(),
+    ];
+    for (final candidate in candidates) {
+      final value = candidate?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
     final phone = user['phone']?.toString().trim();
     if (phone != null && phone.isNotEmpty) return phone;
     return 'Foydalanuvchi';
