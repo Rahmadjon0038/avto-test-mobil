@@ -165,6 +165,7 @@ class _RoadTestAppState extends State<RoadTestApp> {
               session: _session!,
               onLogout: _logout,
               onLogin: () => _openAuthPage(AuthMode.login),
+              onSessionUpdated: _handleAuthSuccess,
             ),
     );
   }

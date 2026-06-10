@@ -1,7 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_colors.dart';
 import '../services/api_client.dart';
+
+const String _googleWebClientId =
+    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
+const String _googleIosClientId =
+    '844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com';
 
 enum AuthMode { login, register }
 
@@ -20,7 +28,14 @@ class _AuthPageState extends State<AuthPage> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _forgotEmailController = TextEditingController();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: <String>['email'],
+    clientId: Platform.isIOS ? _googleIosClientId : null,
+    serverClientId: _googleWebClientId,
+  );
   bool _loading = false;
+  bool _googleLoading = false;
   bool _hidePassword = true;
   String? _error;
 
@@ -29,6 +44,7 @@ class _AuthPageState extends State<AuthPage> {
     _fullNameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _forgotEmailController.dispose();
     super.dispose();
   }
 
@@ -36,6 +52,9 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       _mode = mode;
       _error = null;
+      if (mode == AuthMode.login) {
+        _forgotEmailController.clear();
+      }
     });
   }
 
@@ -74,6 +93,110 @@ class _AuthPageState extends State<AuthPage> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  Future<void> _googleLogin() async {
+    if (_loading || _googleLoading) return;
+
+    setState(() {
+      _googleLoading = true;
+      _error = null;
+    });
+
+    try {
+      final account = await _googleSignIn.signIn();
+      if (account == null) {
+        if (!mounted) return;
+        setState(() => _googleLoading = false);
+        return;
+      }
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google token topilmadi');
+      }
+
+      final session = await ApiClient.googleLogin(idToken: idToken);
+      if (!mounted) return;
+      Navigator.of(context).pop(session);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _googleLoading = false);
+      }
+    }
+  }
+
+  Future<bool> _requestPasswordReset() async {
+    final email = _forgotEmailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Email kiriting');
+      return false;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await ApiClient.requestPasswordReset(email: email);
+      if (!mounted) return false;
+      final message = response.message.isNotEmpty
+          ? response.message
+          : response.temporaryPassword != null
+          ? '6 xonali kod: ${response.temporaryPassword}'
+          : '6 xonali kod emailingizga yuborildi';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  Future<void> _openForgotPasswordDialog() async {
+    _forgotEmailController.clear();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Parolni tiklash'),
+          content: TextField(
+            controller: _forgotEmailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(hintText: 'Email manzil'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Bekor qilish'),
+            ),
+            FilledButton(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      final success = await _requestPasswordReset();
+                      if (success && dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+              child: const Text('Yuborish'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -156,7 +279,12 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
+                      _GoogleButton(
+                        loading: _googleLoading,
+                        onPressed: _googleLoading ? null : _googleLogin,
+                      ),
+                      const SizedBox(height: 14),
                       Form(
                         key: _formKey,
                         child: Column(
@@ -171,8 +299,8 @@ class _AuthPageState extends State<AuthPage> {
                                 textInputAction: TextInputAction.next,
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty
-                                        ? 'Ism kiriting'
-                                        : null,
+                                    ? 'Ism kiriting'
+                                    : null,
                               ),
                               const SizedBox(height: 14),
                             ],
@@ -185,7 +313,9 @@ class _AuthPageState extends State<AuthPage> {
                               prefixText: '+998 ',
                               textInputAction: TextInputAction.next,
                               validator: (value) {
-                                final digits = _normalizePhoneDigits(value ?? '');
+                                final digits = _normalizePhoneDigits(
+                                  value ?? '',
+                                );
                                 return digits.length == 9
                                     ? null
                                     : 'Telefon raqam noto‘g‘ri';
@@ -212,19 +342,50 @@ class _AuthPageState extends State<AuthPage> {
                               ),
                               validator: (value) =>
                                   value == null || value.trim().length < 6
-                                      ? 'Kamida 6 ta belgi bo‘lsin'
-                                      : null,
+                                  ? 'Kamida 6 ta belgi bo‘lsin'
+                                  : null,
                             ),
+                            if (isLogin) ...[
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _loading
+                                      ? null
+                                      : _openForgotPasswordDialog,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Parolni unutdingizmi?',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (_error != null) ...[
                               const SizedBox(height: 14),
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: AppColors.danger.withValues(alpha: 0.08),
+                                  color: AppColors.danger.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(
-                                    color: AppColors.danger.withValues(alpha: 0.18),
+                                    color: AppColors.danger.withValues(
+                                      alpha: 0.18,
+                                    ),
                                   ),
                                 ),
                                 child: Text(
@@ -245,7 +406,8 @@ class _AuthPageState extends State<AuthPage> {
                                 onPressed: _loading ? null : _submit,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.primary,
-                                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.55),
+                                  disabledBackgroundColor: AppColors.primary
+                                      .withValues(alpha: 0.55),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(18),
                                   ),
@@ -261,10 +423,13 @@ class _AuthPageState extends State<AuthPage> {
                                         ),
                                       )
                                     : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            isLogin ? 'Kirish' : "Ro'yxatdan o'tish",
+                                            isLogin
+                                                ? 'Kirish'
+                                                : "Ro'yxatdan o'tish",
                                             style: const TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w700,
@@ -275,7 +440,9 @@ class _AuthPageState extends State<AuthPage> {
                                             width: 28,
                                             height: 28,
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.18),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.18,
+                                              ),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -294,8 +461,10 @@ class _AuthPageState extends State<AuthPage> {
                                 onPressed: _loading
                                     ? null
                                     : () => _switchMode(
-                                          isLogin ? AuthMode.register : AuthMode.login,
-                                        ),
+                                        isLogin
+                                            ? AuthMode.register
+                                            : AuthMode.login,
+                                      ),
                                 child: Text(
                                   isLogin
                                       ? "Hisobingiz yo‘qmi? Ro'yxatdan o'tish"
@@ -461,6 +630,53 @@ class _ModeTab extends StatelessWidget {
   }
 }
 
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.loading, required this.onPressed});
+
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        icon: loading
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.primary,
+                ),
+              )
+            : const Icon(
+                Icons.g_mobiledata_rounded,
+                size: 28,
+                color: AppColors.primary,
+              ),
+        label: const Text(
+          'Google orqali kirish',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RoundedField extends StatelessWidget {
   const _RoundedField({
     required this.controller,
@@ -505,11 +721,7 @@ class _RoundedField extends StatelessWidget {
         prefixText: prefixText,
         prefixIcon: Padding(
           padding: const EdgeInsets.only(left: 18, right: 14),
-          child: Icon(
-            icon,
-            size: 22,
-            color: AppColors.primary,
-          ),
+          child: Icon(icon, size: 22, color: AppColors.primary),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         suffixIcon: suffix,
@@ -523,11 +735,15 @@ class _RoundedField extends StatelessWidget {
         hintStyle: const TextStyle(color: AppColors.textSoft),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.8),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.8),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),

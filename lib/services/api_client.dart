@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
+import '../models/password_reset_response.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../models/ticket_summary.dart';
@@ -90,6 +91,51 @@ class ApiClient {
       refreshToken: _extractRefreshToken(response),
       user: Map<String, dynamic>.from(user),
     );
+  }
+
+  static Future<AuthSession> googleLogin({
+    required String idToken,
+    String? accessToken,
+  }) async {
+    final authHeaders = _jsonHeaders(accessToken: accessToken);
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/auth/google'),
+      headers: authHeaders,
+      body: jsonEncode({'idToken': idToken}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(
+        body['error']?.toString() ?? 'Google orqali kirish amalga oshmadi',
+      );
+    }
+    final nextAccessToken = body['accessToken']?.toString();
+    final user = body['user'];
+    if (nextAccessToken == null || nextAccessToken.isEmpty || user is! Map) {
+      throw Exception('Noto‘g‘ri javob keldi');
+    }
+    return AuthSession(
+      accessToken: nextAccessToken,
+      refreshToken: _extractRefreshToken(response),
+      user: Map<String, dynamic>.from(user),
+    );
+  }
+
+  static Future<PasswordResetResponse> requestPasswordReset({
+    required String email,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/auth/password-reset/request'),
+      headers: _jsonHeaders(),
+      body: jsonEncode({'email': email}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(
+        body['error']?.toString() ?? 'Parolni tiklash amalga oshmadi',
+      );
+    }
+    return PasswordResetResponse.fromJson(body);
   }
 
   static Future<AuthSession> refresh(String refreshToken) async {

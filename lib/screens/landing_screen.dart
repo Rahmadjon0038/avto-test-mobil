@@ -22,7 +22,11 @@ class LandingScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF7F9FF), AppColors.background, Color(0xFFF7F8FC)],
+            colors: [
+              Color(0xFFF7F9FF),
+              AppColors.background,
+              Color(0xFFF7F8FC),
+            ],
           ),
         ),
         child: SafeArea(
@@ -31,7 +35,7 @@ class LandingScreen extends StatelessWidget {
               const TopBar(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -84,9 +88,9 @@ class LandingScreen extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
+                                ),
+                                const SizedBox(width: 12),
+                                SizedBox(
                                   width: 118,
                                   child: Image.asset(
                                     'assets/main.png',
@@ -106,8 +110,9 @@ class LandingScreen extends StatelessWidget {
                                       style: FilledButton.styleFrom(
                                         backgroundColor: AppColors.primary,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
                                         elevation: 0,
                                       ),
@@ -149,7 +154,8 @@ class LandingScreen extends StatelessWidget {
                             icon: Icons.description_rounded,
                             iconColor: const Color(0xFF4C8DFF),
                             title: 'Mavzu bo‘yicha testlar',
-                            subtitle: 'Belgilar va qoidalarni bo‘limma-bo‘lim o‘rganing.',
+                            subtitle:
+                                'Belgilar va qoidalarni bo‘limma-bo‘lim o‘rganing.',
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
@@ -165,7 +171,8 @@ class LandingScreen extends StatelessWidget {
                             icon: Icons.receipt_long_rounded,
                             iconColor: const Color(0xFF34C759),
                             title: 'Biletlar bo‘yicha testlar',
-                            subtitle: 'Rasmiy biletlar formatida yechib mashq qiling.',
+                            subtitle:
+                                'Rasmiy biletlar formatida yechib mashq qiling.',
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
@@ -173,7 +180,8 @@ class LandingScreen extends StatelessWidget {
                             icon: Icons.local_fire_department_rounded,
                             iconColor: const Color(0xFFFF6B35),
                             title: 'Marafon rejimi',
-                            subtitle: 'Uzluksiz savollar: tezlik va aniqlikni oshiring.',
+                            subtitle:
+                                'Uzluksiz savollar: tezlik va aniqlikni oshiring.',
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
@@ -189,7 +197,8 @@ class LandingScreen extends StatelessWidget {
                             icon: Icons.close_rounded,
                             iconColor: const Color(0xFFEE5A73),
                             title: 'Mening xatolarim',
-                            subtitle: 'Xato qilgan savollaringizni qayta ko‘rib chiqing.',
+                            subtitle:
+                                'Xato qilgan savollaringizni qayta ko‘rib chiqing.',
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
@@ -197,7 +206,8 @@ class LandingScreen extends StatelessWidget {
                             icon: Icons.menu_book_rounded,
                             iconColor: const Color(0xFFF5A623),
                             title: 'Barcha testlar javoblari',
-                            subtitle: 'To‘g‘ri javoblarni izohlar bilan ko‘ring.',
+                            subtitle:
+                                'To‘g‘ri javoblarni izohlar bilan ko‘ring.',
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
@@ -260,10 +270,13 @@ class LandingScreen extends StatelessWidget {
                                     child: FilledButton(
                                       onPressed: onLogin,
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(0xFF0F53D6),
+                                        backgroundColor: const Color(
+                                          0xFF0F53D6,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
                                         elevation: 0,
                                       ),
@@ -346,9 +359,7 @@ class _SectionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.75),
-            ),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x08000000),

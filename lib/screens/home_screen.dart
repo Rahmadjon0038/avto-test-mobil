@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
+import '../services/api_client.dart';
 import 'custom_tests_page.dart';
 import 'answers_page.dart';
 import 'exam_page.dart';
@@ -11,17 +13,24 @@ import 'topics_page.dart';
 import 'marathon_page.dart';
 import '../widgets/top_bar.dart';
 
+const String _googleWebClientId =
+    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
+const String _googleIosClientId =
+    '844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
     required this.session,
     required this.onLogout,
     required this.onLogin,
+    required this.onSessionUpdated,
   });
 
   final AuthSession session;
   final VoidCallback onLogout;
   final VoidCallback onLogin;
+  final ValueChanged<AuthSession> onSessionUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +50,7 @@ class HomeScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -72,7 +81,7 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
@@ -290,113 +299,186 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
+        final googleSignIn = GoogleSignIn(
+          scopes: <String>['email'],
+          clientId: Theme.of(sheetContext).platform == TargetPlatform.iOS
+              ? _googleIosClientId
+              : null,
+          serverClientId: _googleWebClientId,
+        );
+        bool googleLoading = false;
+
         return SafeArea(
-          child: Container(
-            margin: EdgeInsets.zero,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(26),
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 24,
-                  offset: Offset(0, 12),
-                ),
-              ],
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(999),
+          child: StatefulBuilder(
+            builder: (sheetContext, setSheetState) {
+              Future<void> linkGoogle() async {
+                if (googleLoading) return;
+                setSheetState(() => googleLoading = true);
+                try {
+                  final account = await googleSignIn.signIn();
+                  if (account == null) return;
+                  final auth = await account.authentication;
+                  final idToken = auth.idToken;
+                  if (idToken == null || idToken.isEmpty) {
+                    throw Exception('Google token topilmadi');
+                  }
+                  final linked = await ApiClient.googleLogin(
+                    idToken: idToken,
+                    accessToken: session.accessToken,
+                  );
+                  onSessionUpdated(linked);
+                  if (sheetContext.mounted) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      const SnackBar(content: Text('Google akkaunti ulandi')),
+                    );
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
                       ),
-                    ),
+                    );
+                  }
+                } finally {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => googleLoading = false);
+                  }
+                }
+              }
+
+              return Container(
+                margin: EdgeInsets.zero,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(26),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 24,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceTint,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          color: AppColors.primary,
-                          size: 30,
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Profil',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.text,
-                              ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceTint,
+                              borderRadius: BorderRadius.circular(18),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              fullName.isNotEmpty ? fullName : 'Foydalanuvchi',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textMuted,
-                              ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.primary,
+                              size: 30,
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Profil',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  fullName.isNotEmpty
+                                      ? fullName
+                                      : 'Foydalanuvchi',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      _ProfileInfoRow(
+                        label: 'Ism',
+                        value: fullName.isNotEmpty ? fullName : 'Belgilanmagan',
+                      ),
+                      const SizedBox(height: 10),
+                      _ProfileInfoRow(
+                        label: 'Telefon',
+                        value: phone?.isNotEmpty == true ? phone! : 'Belgilanmagan',
+                      ),
+                      if ((session.user['google_sub']?.toString() ?? '').isEmpty) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton.icon(
+                            onPressed: googleLoading ? null : linkGoogle,
+                            icon: googleLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                    ),
+                                  )
+                                : const Icon(Icons.link_rounded),
+                            label: const Text('Google ulash'),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton.tonal(
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop();
+                            onLogout();
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFEDEE),
+                            foregroundColor: AppColors.danger,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text('Chiqish'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  _ProfileInfoRow(
-                    label: 'Ism',
-                    value: fullName.isNotEmpty ? fullName : 'Belgilanmagan',
-                  ),
-                  const SizedBox(height: 10),
-                  _ProfileInfoRow(
-                    label: 'Telefon',
-                    value: phone?.isNotEmpty == true ? phone! : 'Belgilanmagan',
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton.tonal(
-                      onPressed: () {
-                        Navigator.of(sheetContext).pop();
-                        onLogout();
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFEDEE),
-                        foregroundColor: AppColors.danger,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: const Text('Chiqish'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         );
       },
