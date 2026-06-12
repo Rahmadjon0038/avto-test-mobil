@@ -7,6 +7,7 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/exam_question.dart';
 import '../services/api_client.dart';
+import '../widgets/question_swipe_detector.dart';
 
 class ExamPage extends StatefulWidget {
   const ExamPage({super.key, required this.session});
@@ -267,6 +268,24 @@ class _ExamPageState extends State<ExamPage> {
     });
   }
 
+  void _goToNextQuestion() {
+    if (_locked || _currentIndex >= _questions.length - 1) return;
+    _autoNextTimer?.cancel();
+    setState(() {
+      _currentIndex += 1;
+    });
+    _scrollCurrentQuestionIntoView();
+  }
+
+  void _goToPreviousQuestion() {
+    if (_locked || _currentIndex <= 0) return;
+    _autoNextTimer?.cancel();
+    setState(() {
+      _currentIndex -= 1;
+    });
+    _scrollCurrentQuestionIntoView();
+  }
+
   void _scrollCurrentQuestionIntoView() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentContext = _questionCardKey.currentContext;
@@ -293,6 +312,8 @@ class _ExamPageState extends State<ExamPage> {
 
   Future<void> _finishExam() async {
     if (_locked) return;
+    _timer?.cancel();
+    _autoNextTimer?.cancel();
     final response = await _submitProgress(finalize: true);
     if (!mounted || response == null) return;
 
@@ -362,6 +383,73 @@ class _ExamPageState extends State<ExamPage> {
                   child: FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Yopish'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLockedRestartModal() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Imtihon yakunlangan',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Bu imtihon allaqachon tugagan. Davom etish uchun uni qayta boshlang.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.4,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _restartExam();
+                    },
+                    child: const Text('Imtihonni qayta boshlash'),
                   ),
                 ),
               ],
@@ -517,464 +605,483 @@ class _ExamPageState extends State<ExamPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _sessionExpired
-              ? _CenteredMessage(
-                  title: 'Sessiya tugadi',
-                  subtitle: 'Qayta kirish kerak.',
-                  actionText: 'Ortga qaytish',
-                  onPressed: () => Navigator.of(context).pop(),
-                )
-              : _loadError != null && _questions.isEmpty
-              ? _CenteredMessage(
-                  title: 'Imtihon yuklanmadi',
-                  subtitle: _loadError!,
-                  actionText: 'Qayta urinib ko‘rish',
-                  onPressed: _bootstrapExam,
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Material(
-                          color: Colors.white,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: () => Navigator.of(context).pop(),
-                            customBorder: const CircleBorder(),
-                            child: const SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: Icon(Icons.arrow_back_rounded),
+        child: QuestionSwipeDetector(
+          onSwipeLeft: _goToNextQuestion,
+          onSwipeRight: _goToPreviousQuestion,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _sessionExpired
+                ? _CenteredMessage(
+                    title: 'Sessiya tugadi',
+                    subtitle: 'Qayta kirish kerak.',
+                    actionText: 'Ortga qaytish',
+                    onPressed: () => Navigator.of(context).pop(),
+                  )
+                : _loadError != null && _questions.isEmpty
+                ? _CenteredMessage(
+                    title: 'Imtihon yuklanmadi',
+                    subtitle: _loadError!,
+                    actionText: 'Qayta urinib ko‘rish',
+                    onPressed: _bootstrapExam,
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Material(
+                            color: Colors.white,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).pop(),
+                              customBorder: const CircleBorder(),
+                              child: const SizedBox(
+                                width: 46,
+                                height: 46,
+                                child: Icon(Icons.arrow_back_rounded),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Imtihon topshirish',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_currentIndex + 1}/${_questions.length} savol',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _TimerChip(secondsLeft: _secondsLeft),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      if (_completed || _expired)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F8FB),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: AppColors.border.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          child: Row(
                             children: [
-                              const Text(
-                                'Imtihon topshirish',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.text,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _completed
+                                          ? 'Imtihon yakunlandi'
+                                          : 'Vaqt tugadi',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'To‘g‘ri javoblar: $_score/${_questions.length}',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_currentIndex + 1}/${_questions.length} savol',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: AppColors.textMuted,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                height: 40,
+                                child: FilledButton.tonal(
+                                  onPressed: _restartExam,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFFDCE9FF),
+                                    foregroundColor: const Color(0xFF0A4DB5),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                  ),
+                                  child: const Text('Yangi imtihon'),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        _TimerChip(secondsLeft: _secondsLeft),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    if (_completed || _expired)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF7F8FB),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: AppColors.border.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _completed
-                                        ? 'Imtihon yakunlandi'
-                                        : 'Vaqt tugadi',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.text,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'To‘g‘ri javoblar: $_score/${_questions.length}',
-                                    style: const TextStyle(
-                                      fontSize: 12.5,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              height: 40,
-                              child: FilledButton.tonal(
-                                onPressed: _restartExam,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFDCE9FF),
-                                  foregroundColor: const Color(0xFF0A4DB5),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                ),
-                                child: const Text('Yangi imtihon'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (_completed || _expired) const SizedBox(height: 14),
-                    Expanded(
-                      child: question == null
-                          ? const SizedBox.shrink()
-                          : SingleChildScrollView(
-                              controller: _scrollController,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 18),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: 42,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        physics: const BouncingScrollPhysics(),
-                                        itemCount: _questions.length,
-                                        separatorBuilder: (context, index) =>
-                                            const SizedBox(width: 6),
-                                        itemBuilder: (context, index) {
-                                          final answered = _answers.containsKey(
-                                            _questions[index].id,
-                                          );
-                                          final isCurrent =
-                                              index == _currentIndex;
-                                          final isCorrect =
-                                              answered &&
-                                              _answers[_questions[index].id] ==
-                                                  _questions[index]
-                                                      .correctIndex;
-                                          final backgroundColor = isCurrent
-                                              ? const Color(0xFF1F4FD0)
-                                              : answered
-                                              ? isCorrect
-                                                    ? const Color(0xFF21A65B)
-                                                    : const Color(0xFFD64545)
-                                              : AppColors.surfaceSoft;
-                                          final borderColor = isCurrent
-                                              ? const Color(0xFF7FA6FF)
-                                              : answered
-                                              ? isCorrect
-                                                    ? const Color(0xFF5BC37E)
-                                                    : const Color(0xFFE06A6A)
-                                              : AppColors.border.withValues(
-                                                  alpha: 0.85,
+                      if (_completed || _expired) const SizedBox(height: 14),
+                      Expanded(
+                        child: question == null
+                            ? const SizedBox.shrink()
+                            : SingleChildScrollView(
+                                controller: _scrollController,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 18),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        height: 42,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          physics:
+                                              const BouncingScrollPhysics(),
+                                          itemCount: _questions.length,
+                                          separatorBuilder: (context, index) =>
+                                              const SizedBox(width: 6),
+                                          itemBuilder: (context, index) {
+                                            final answered = _answers
+                                                .containsKey(
+                                                  _questions[index].id,
                                                 );
-
-                                          return Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  _currentIndex = index;
-                                                });
-                                                _scrollCurrentQuestionIntoView();
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: Container(
-                                                width: 34,
-                                                height: 34,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: backgroundColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: borderColor,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  '${index + 1}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: isCurrent || answered
-                                                        ? Colors.white
-                                                        : AppColors.text,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Container(
-                                      key: _questionCardKey,
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(18),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(22),
-                                        border: Border.all(
-                                          color: AppColors.border.withValues(
-                                            alpha: 0.72,
-                                          ),
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x08000000),
-                                            blurRadius: 14,
-                                            offset: Offset(0, 8),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            question.text,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              height: 1.28,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.text,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          GestureDetector(
-                                            onTap: () => _openImagePreview(
-                                              _questionImageUrl(question),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              child: _buildQuestionImage(
-                                                question,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    ...List.generate(question.options.length, (
-                                      index,
-                                    ) {
-                                      final selected =
-                                          _answers[question.id] == index;
-                                      final isCorrect =
-                                          index == question.correctIndex;
-                                      final showResult = _answers.containsKey(
-                                        question.id,
-                                      );
-                                      final backgroundColor = showResult
-                                          ? isCorrect
-                                                ? const Color(0xFFCFF0D9)
-                                                : selected
-                                                ? const Color(0xFFF4C5C5)
-                                                : Colors.white
-                                          : selected
-                                          ? AppColors.surfaceTint
-                                          : Colors.white;
-                                      final borderColor = showResult
-                                          ? isCorrect
-                                                ? const Color(0xFF6CBF86)
-                                                : selected
-                                                ? const Color(0xFFDD6B6B)
+                                            final isCurrent =
+                                                index == _currentIndex;
+                                            final isCorrect =
+                                                answered &&
+                                                _answers[_questions[index]
+                                                        .id] ==
+                                                    _questions[index]
+                                                        .correctIndex;
+                                            final backgroundColor = isCurrent
+                                                ? const Color(0xFF1F4FD0)
+                                                : answered
+                                                ? isCorrect
+                                                      ? const Color(0xFF21A65B)
+                                                      : const Color(0xFFD64545)
+                                                : AppColors.surfaceSoft;
+                                            final borderColor = isCurrent
+                                                ? const Color(0xFF7FA6FF)
+                                                : answered
+                                                ? isCorrect
+                                                      ? const Color(0xFF5BC37E)
+                                                      : const Color(0xFFE06A6A)
                                                 : AppColors.border.withValues(
-                                                    alpha: 0.72,
-                                                  )
-                                          : selected
-                                          ? AppColors.primary.withValues(
-                                              alpha: 0.28,
-                                            )
-                                          : AppColors.border.withValues(
-                                              alpha: 0.72,
-                                            );
+                                                    alpha: 0.85,
+                                                  );
 
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 10,
+                                            return Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _currentIndex = index;
+                                                  });
+                                                  _scrollCurrentQuestionIntoView();
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: Container(
+                                                  width: 34,
+                                                  height: 34,
+                                                  alignment: Alignment.center,
+                                                  decoration: BoxDecoration(
+                                                    color: backgroundColor,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: borderColor,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '${index + 1}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color:
+                                                          isCurrent || answered
+                                                          ? Colors.white
+                                                          : AppColors.text,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
-                                        child: Material(
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Container(
+                                        key: _questionCardKey,
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(18),
+                                        decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.circular(
-                                            18,
+                                            22,
                                           ),
-                                          child: InkWell(
-                                            onTap: _locked
-                                                ? null
-                                                : () => _saveAnswer(
-                                                    _currentIndex,
-                                                    index,
-                                                  ),
+                                          border: Border.all(
+                                            color: AppColors.border.withValues(
+                                              alpha: 0.72,
+                                            ),
+                                          ),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x08000000),
+                                              blurRadius: 14,
+                                              offset: Offset(0, 8),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              question.text,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                height: 1.28,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.text,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 14),
+                                            GestureDetector(
+                                              onTap: () => _openImagePreview(
+                                                _questionImageUrl(question),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(18),
+                                                child: _buildQuestionImage(
+                                                  question,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      ...List.generate(question.options.length, (
+                                        index,
+                                      ) {
+                                        final selected =
+                                            _answers[question.id] == index;
+                                        final isCorrect =
+                                            index == question.correctIndex;
+                                        final showResult = _answers.containsKey(
+                                          question.id,
+                                        );
+                                        final backgroundColor = showResult
+                                            ? isCorrect
+                                                  ? const Color(0xFFCFF0D9)
+                                                  : selected
+                                                  ? const Color(0xFFF4C5C5)
+                                                  : Colors.white
+                                            : selected
+                                            ? AppColors.surfaceTint
+                                            : Colors.white;
+                                        final borderColor = showResult
+                                            ? isCorrect
+                                                  ? const Color(0xFF6CBF86)
+                                                  : selected
+                                                  ? const Color(0xFFDD6B6B)
+                                                  : AppColors.border.withValues(
+                                                      alpha: 0.72,
+                                                    )
+                                            : selected
+                                            ? AppColors.primary.withValues(
+                                                alpha: 0.28,
+                                              )
+                                            : AppColors.border.withValues(
+                                                alpha: 0.72,
+                                              );
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 10,
+                                          ),
+                                          child: Material(
+                                            color: Colors.white,
                                             borderRadius: BorderRadius.circular(
                                               18,
                                             ),
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 180,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 15,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: backgroundColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(18),
-                                                border: Border.all(
-                                                  color: borderColor,
+                                            child: InkWell(
+                                              onTap: _locked
+                                                  ? () =>
+                                                        _showLockedRestartModal()
+                                                  : _submitting
+                                                  ? null
+                                                  : () => _saveAnswer(
+                                                      _currentIndex,
+                                                      index,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 180,
                                                 ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Container(
-                                                    width: 28,
-                                                    height: 28,
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          showResult &&
-                                                              isCorrect
-                                                          ? const Color(
-                                                              0xFF21A65B,
-                                                            )
-                                                          : showResult &&
-                                                                selected
-                                                          ? const Color(
-                                                              0xFFD64545,
-                                                            )
-                                                          : const Color(
-                                                              0xFFE9EDF6,
-                                                            ),
-                                                      shape: BoxShape.circle,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 15,
                                                     ),
-                                                    child: Icon(
-                                                      showResult && isCorrect
-                                                          ? Icons.check_rounded
-                                                          : showResult &&
-                                                                selected
-                                                          ? Icons.close_rounded
-                                                          : Icons
-                                                                .circle_outlined,
-                                                      size: 16,
-                                                      color:
-                                                          showResult &&
-                                                              (isCorrect ||
-                                                                  selected)
-                                                          ? Colors.white
-                                                          : AppColors.textSoft,
-                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: backgroundColor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(18),
+                                                  border: Border.all(
+                                                    color: borderColor,
                                                   ),
-                                                  const SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: Text(
-                                                      question.options[index],
-                                                      style: TextStyle(
-                                                        fontSize: 13.5,
-                                                        height: 1.3,
-                                                        fontWeight:
-                                                            FontWeight.w600,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 28,
+                                                      height: 28,
+                                                      decoration: BoxDecoration(
                                                         color:
                                                             showResult &&
                                                                 isCorrect
                                                             ? const Color(
-                                                                0xFF178343,
+                                                                0xFF21A65B,
                                                               )
                                                             : showResult &&
                                                                   selected
                                                             ? const Color(
                                                                 0xFFD64545,
                                                               )
-                                                            : AppColors.text,
+                                                            : const Color(
+                                                                0xFFE9EDF6,
+                                                              ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        showResult && isCorrect
+                                                            ? Icons
+                                                                  .check_rounded
+                                                            : showResult &&
+                                                                  selected
+                                                            ? Icons
+                                                                  .close_rounded
+                                                            : Icons
+                                                                  .circle_outlined,
+                                                        size: 16,
+                                                        color:
+                                                            showResult &&
+                                                                (isCorrect ||
+                                                                    selected)
+                                                            ? Colors.white
+                                                            : AppColors
+                                                                  .textSoft,
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(
+                                                        question.options[index],
+                                                        style: TextStyle(
+                                                          fontSize: 13.5,
+                                                          height: 1.3,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color:
+                                                              showResult &&
+                                                                  isCorrect
+                                                              ? const Color(
+                                                                  0xFF178343,
+                                                                )
+                                                              : showResult &&
+                                                                    selected
+                                                              ? const Color(
+                                                                  0xFFD64545,
+                                                                )
+                                                              : AppColors.text,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      );
-                                    }),
-                                  ],
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      SafeArea(
+                        top: false,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 46,
+                                child: FilledButton.tonal(
+                                  onPressed: _locked ? null : _finishExam,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFFBCD2FF),
+                                    foregroundColor: const Color(0xFF0A4DB5),
+                                    disabledForegroundColor: const Color(
+                                      0xFF5C85C9,
+                                    ),
+                                    disabledBackgroundColor: const Color(
+                                      0xFFDCE9FF,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text('Yakunlash'),
                                 ),
                               ),
                             ),
-                    ),
-                    const SizedBox(height: 12),
-                    SafeArea(
-                      top: false,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
+                            const SizedBox(width: 10),
+                            SizedBox(
                               height: 46,
                               child: FilledButton.tonal(
-                                onPressed: _locked ? null : _finishExam,
+                                onPressed: _restartExam,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFBCD2FF),
-                                  foregroundColor: const Color(0xFF0A4DB5),
-                                  disabledForegroundColor: const Color(
-                                    0xFF5C85C9,
-                                  ),
-                                  disabledBackgroundColor: const Color(
-                                    0xFFDCE9FF,
-                                  ),
+                                  backgroundColor: const Color(0xFFF4D1D1),
+                                  foregroundColor: const Color(0xFFD64545),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
                                 ),
-                                child: const Text('Yakunlash'),
+                                child: const Text('Qayta boshlash'),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            height: 46,
-                            child: FilledButton.tonal(
-                              onPressed: _restartExam,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFF4D1D1),
-                                foregroundColor: const Color(0xFFD64545),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                              ),
-                              child: const Text('Qayta boshlash'),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

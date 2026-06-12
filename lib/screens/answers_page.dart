@@ -425,7 +425,7 @@ class _AnswerCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Savol ${index + 1}',
+            '${index + 1}-savol',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,

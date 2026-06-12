@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -50,17 +53,18 @@ class HomeScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 2),
                 TopBar(
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         width: 42,
-                        height: 42,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: AppColors.surfaceTint,
                           borderRadius: BorderRadius.circular(14),
@@ -126,8 +130,8 @@ class HomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
-                              height: 40,
-                              width: 118,
+                              height: 46,
+                              width: 146,
                               child: FilledButton(
                                 onPressed: () =>
                                     _openSection(context, 'Video darsliklar'),
@@ -136,28 +140,33 @@ class HomeScreen extends StatelessWidget {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
                                   elevation: 0,
                                 ),
-                                child: const FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Boshlash',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Boshlash',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
                                       ),
-                                      SizedBox(width: 8),
-                                      Icon(
+                                    ),
+                                    SizedBox(width: 10),
+                                    CircleAvatar(
+                                      radius: 13,
+                                      backgroundColor: Colors.white,
+                                      child: Icon(
                                         Icons.play_arrow_rounded,
-                                        color: Colors.white,
-                                        size: 16,
+                                        size: 15,
+                                        color: Color(0xFF1F4FD0),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -301,18 +310,47 @@ class HomeScreen extends StatelessWidget {
       builder: (sheetContext) {
         final googleSignIn = GoogleSignIn(
           scopes: <String>['email'],
-          clientId: Theme.of(sheetContext).platform == TargetPlatform.iOS
+          clientId: Platform.isIOS || Platform.isMacOS
               ? _googleIosClientId
               : null,
           serverClientId: _googleWebClientId,
         );
         bool googleLoading = false;
 
+        Future<bool> confirmGoogleLink() async {
+          final result = await showDialog<bool>(
+            context: sheetContext,
+            barrierDismissible: false,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: const Text('Google ulash'),
+                content: const Text(
+                  'Google akkauntingizni telefon orqali kirgan hisobingizga birlashtirish uchun ruxsat kerak. '
+                  'Shunda keyin telefon raqam yoki Google orqali kirganingizda bitta akkaunt ochiladi.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('Bekor qilish'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    child: const Text('Roziman'),
+                  ),
+                ],
+              );
+            },
+          );
+          return result ?? false;
+        }
+
         return SafeArea(
           child: StatefulBuilder(
             builder: (sheetContext, setSheetState) {
               Future<void> linkGoogle() async {
                 if (googleLoading) return;
+                final accepted = await confirmGoogleLink();
+                if (!accepted) return;
                 setSheetState(() => googleLoading = true);
                 try {
                   final account = await googleSignIn.signIn();
@@ -433,9 +471,12 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       _ProfileInfoRow(
                         label: 'Telefon',
-                        value: phone?.isNotEmpty == true ? phone! : 'Belgilanmagan',
+                        value: phone?.isNotEmpty == true
+                            ? phone!
+                            : 'Belgilanmagan',
                       ),
-                      if ((session.user['google_sub']?.toString() ?? '').isEmpty) ...[
+                      if ((session.user['google_sub']?.toString() ?? '')
+                          .isEmpty) ...[
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
@@ -604,6 +645,13 @@ class _SectionCard extends StatelessWidget {
 class _SocialFooter extends StatelessWidget {
   const _SocialFooter();
 
+  Future<void> _openLink(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Link ochilmadi');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -631,7 +679,8 @@ class _SocialFooter extends StatelessWidget {
                   icon: Icons.camera_alt_rounded,
                   label: 'Instagram',
                   color: const Color(0xFFE1306C),
-                  onTap: () {},
+                  onTap: () =>
+                      _openLink('https://www.instagram.com/reel/DZZ3X7agYDW/'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -640,7 +689,7 @@ class _SocialFooter extends StatelessWidget {
                   icon: Icons.send_rounded,
                   label: 'Telegram',
                   color: const Color(0xFF2AABEE),
-                  onTap: () {},
+                  onTap: () => _openLink('https://t.me/JURABEK_AUTOTEACHER'),
                 ),
               ),
             ],

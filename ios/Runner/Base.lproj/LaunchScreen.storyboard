@@ -16,24 +16,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="oQ1-Qm-7Qx">
-                                <rect key="frame" x="116.5" y="346" width="160" height="160"/>
-                            </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Road-test" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="vQ9-f2-1Lp">
-                                <rect key="frame" x="116" y="522" width="161" height="34"/>
-                                <fontDescription key="fontDescription" type="system" weight="bold" pointSize="30"/>
-                                <color key="textColor" red="0.1019607843" green="0.1019607843" blue="0.1176470588" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Wm5-9s-NwK"/>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                         <constraints>
-                            <constraint firstItem="oQ1-Qm-7Qx" firstAttribute="centerX" secondItem="Wm5-9s-NwK" secondAttribute="centerX" id="A1d-f7-y8P"/>
-                            <constraint firstItem="oQ1-Qm-7Qx" firstAttribute="centerY" secondItem="Wm5-9s-NwK" secondAttribute="centerY" constant="-18" id="B2k-1n-4Hm"/>
-                            <constraint firstItem="oQ1-Qm-7Qx" firstAttribute="width" constant="160" id="C3m-2p-5Jn"/>
-                            <constraint firstItem="oQ1-Qm-7Qx" firstAttribute="height" constant="160" id="D4n-3q-6Ko"/>
-                            <constraint firstItem="vQ9-f2-1Lp" firstAttribute="top" secondItem="oQ1-Qm-7Qx" secondAttribute="bottom" constant="14" id="E5o-4r-7Lp"/>
-                            <constraint firstItem="vQ9-f2-1Lp" firstAttribute="centerX" secondItem="Wm5-9s-NwK" secondAttribute="centerX" id="F6p-5s-8Mq"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -41,7 +27,4 @@
             </objects>
         </scene>
     </scenes>
-    <resources>
-        <image name="LaunchLogo" width="1024" height="1024"/>
-    </resources>
 </document>

@@ -32,13 +32,14 @@ class LandingScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              const TopBar(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const TopBar(),
+                      const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -288,11 +289,11 @@ class LandingScreen extends StatelessWidget {
                                             Text(
                                               'Boshlash',
                                               style: TextStyle(
-                                                fontSize: 12.5,
+                                                fontSize: 14.5,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
-                                            SizedBox(width: 8),
+                                            SizedBox(width: 12),
                                             CircleAvatar(
                                               radius: 9,
                                               backgroundColor: Colors.white,

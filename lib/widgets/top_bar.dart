@@ -10,13 +10,13 @@ class TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(top: 12),
       child: DecoratedBox(
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.all(Radius.circular(18)),
-          border: Border(
-            bottom: BorderSide(color: Color(0xFFF0F0F4), width: 1),
+          border: Border.fromBorderSide(
+            BorderSide(color: Color(0xFFDDE2EA), width: 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -27,7 +27,7 @@ class TopBar extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
           child: Row(
             children: [
               const _BrandMark(),

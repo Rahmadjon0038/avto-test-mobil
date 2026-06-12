@@ -7,6 +7,7 @@ import '../core/app_constants.dart';
 import '../models/answer_question.dart';
 import '../models/auth_session.dart';
 import '../services/api_client.dart';
+import '../widgets/question_swipe_detector.dart';
 
 class MarathonPage extends StatefulWidget {
   const MarathonPage({super.key, required this.session});
@@ -451,16 +452,9 @@ class _MarathonPageState extends State<MarathonPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (velocity <= -250) {
-              _goToNextQuestion();
-            } else if (velocity >= 250) {
-              _goToPreviousQuestion();
-            }
-          },
+        child: QuestionSwipeDetector(
+          onSwipeLeft: _goToNextQuestion,
+          onSwipeRight: _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: _isLoading

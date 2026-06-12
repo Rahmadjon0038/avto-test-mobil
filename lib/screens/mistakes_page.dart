@@ -5,6 +5,7 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
 import '../services/api_client.dart';
+import '../widgets/question_swipe_detector.dart';
 
 class MistakesPage extends StatefulWidget {
   const MistakesPage({super.key, required this.session});
@@ -160,22 +161,23 @@ class _MistakesPageState extends State<MistakesPage> {
     final selected = _answers[currentQuestion.id];
     final answered = selected != null;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (velocity <= -250 && _currentIndex < questions.length - 1) {
-          setState(() {
-            _currentIndex += 1;
-          });
-          _scrollCurrentQuestionIntoView();
-        } else if (velocity >= 250 && _currentIndex > 0) {
-          setState(() {
-            _currentIndex -= 1;
-          });
-          _scrollCurrentQuestionIntoView();
-        }
-      },
+    return QuestionSwipeDetector(
+      onSwipeLeft: _currentIndex < questions.length - 1
+          ? () {
+              setState(() {
+                _currentIndex += 1;
+              });
+              _scrollCurrentQuestionIntoView();
+            }
+          : null,
+      onSwipeRight: _currentIndex > 0
+          ? () {
+              setState(() {
+                _currentIndex -= 1;
+              });
+              _scrollCurrentQuestionIntoView();
+            }
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -206,8 +208,12 @@ class _MistakesPageState extends State<MistakesPage> {
                       setState(() {
                         if (_answers[currentQuestion.id] == null) {
                           _answers[currentQuestion.id] = index;
+                          if (_currentIndex < questions.length - 1) {
+                            _currentIndex += 1;
+                          }
                         }
                       });
+                      _scrollCurrentQuestionIntoView();
                     },
                   ),
                   if (answered && currentQuestion.explanation.isNotEmpty) ...[
@@ -780,12 +786,12 @@ class _CompactOptionListItem extends StatelessWidget {
               Expanded(
                 child: Text(
                   option,
-                  maxLines: 3,
+                  maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11.4,
-                    height: 1.15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13.2,
+                    height: 1.22,
+                    fontWeight: FontWeight.w700,
                     color: textColor,
                   ),
                 ),
@@ -953,8 +959,8 @@ class _QuestionCard extends StatelessWidget {
           Text(
             question.text,
             style: const TextStyle(
-              fontSize: 13.2,
-              height: 1.22,
+              fontSize: 15.6,
+              height: 1.28,
               fontWeight: FontWeight.w800,
               color: AppColors.text,
             ),
@@ -998,8 +1004,8 @@ class _ExplanationCard extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 12.8,
-          height: 1.4,
+          fontSize: 13.6,
+          height: 1.42,
           color: AppColors.textMuted,
         ),
       ),

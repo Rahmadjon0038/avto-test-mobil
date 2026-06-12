@@ -14,6 +14,10 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<key>GIDClientID</key>
+	<string>844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -28,5 +32,16 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.844953821020-u94ktl35es9aquthb8rh5rmg7etossra</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

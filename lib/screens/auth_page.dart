@@ -6,10 +6,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../core/app_colors.dart';
 import '../services/api_client.dart';
 
-const String _googleWebClientId =
-    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
 const String _googleIosClientId =
     '844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com';
+const String _googleServerClientId =
+    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
 
 enum AuthMode { login, register }
 
@@ -31,8 +31,8 @@ class _AuthPageState extends State<AuthPage> {
   final _forgotEmailController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['email'],
-    clientId: Platform.isIOS ? _googleIosClientId : null,
-    serverClientId: _googleWebClientId,
+    clientId: Platform.isIOS || Platform.isMacOS ? _googleIosClientId : null,
+    serverClientId: _googleServerClientId,
   );
   bool _loading = false;
   bool _googleLoading = false;
@@ -147,8 +147,6 @@ class _AuthPageState extends State<AuthPage> {
       if (!mounted) return false;
       final message = response.message.isNotEmpty
           ? response.message
-          : response.temporaryPassword != null
-          ? '6 xonali kod: ${response.temporaryPassword}'
           : '6 xonali kod emailingizga yuborildi';
       ScaffoldMessenger.of(
         context,
