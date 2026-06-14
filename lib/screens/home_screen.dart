@@ -14,6 +14,7 @@ import 'mistakes_page.dart';
 import 'tickets_page.dart';
 import 'topics_page.dart';
 import 'marathon_page.dart';
+import 'videos_page.dart';
 import '../widgets/top_bar.dart';
 
 const String _googleWebClientId =
@@ -28,12 +29,14 @@ class HomeScreen extends StatelessWidget {
     required this.onLogout,
     required this.onLogin,
     required this.onSessionUpdated,
+    required this.onChangePassword,
   });
 
   final AuthSession session;
   final VoidCallback onLogout;
   final VoidCallback onLogin;
   final ValueChanged<AuthSession> onSessionUpdated;
+  final VoidCallback onChangePassword;
 
   @override
   Widget build(BuildContext context) {
@@ -133,8 +136,12 @@ class HomeScreen extends StatelessWidget {
                               height: 46,
                               width: 146,
                               child: FilledButton(
-                                onPressed: () =>
-                                    _openSection(context, 'Video darsliklar'),
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        VideosPage(session: session),
+                                  ),
+                                ),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1F4FD0),
                                   shape: RoundedRectangleBorder(
@@ -202,7 +209,10 @@ class HomeScreen extends StatelessWidget {
                       title: 'Biletlar bo‘yicha testlar',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => TicketsPage(session: session),
+                          builder: (_) => TicketsPage(
+                            session: session,
+                            onSessionUpdated: onSessionUpdated,
+                          ),
                         ),
                       ),
                     ),
@@ -220,7 +230,10 @@ class HomeScreen extends StatelessWidget {
                       title: 'Sozlamali testlar',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => CustomTestsPage(session: session),
+                          builder: (_) => CustomTestsPage(
+                            session: session,
+                            onSessionUpdated: onSessionUpdated,
+                          ),
                         ),
                       ),
                     ),
@@ -231,7 +244,10 @@ class HomeScreen extends StatelessWidget {
                       title: 'Mening xatolarim',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => MistakesPage(session: session),
+                          builder: (_) => MistakesPage(
+                            session: session,
+                            onSessionUpdated: onSessionUpdated,
+                          ),
                         ),
                       ),
                     ),
@@ -264,21 +280,38 @@ class HomeScreen extends StatelessWidget {
 
   void _openSection(BuildContext context, String title) {
     if (title == 'Marafon rejimi') {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => MarathonPage(session: session)));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => MarathonPage(
+            session: session,
+            onSessionUpdated: onSessionUpdated,
+          ),
+        ),
+      );
       return;
     }
     if (title == 'Barcha testlar javoblari') {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => AnswersPage(session: session)));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              AnswersPage(session: session, onSessionUpdated: onSessionUpdated),
+        ),
+      );
       return;
     }
     if (title == 'Imtihon topshirish') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ExamPage(session: session, onSessionUpdated: onSessionUpdated),
+        ),
+      );
+      return;
+    }
+    if (title == 'Video darsliklar') {
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => ExamPage(session: session)));
+      ).push(MaterialPageRoute(builder: (_) => VideosPage(session: session)));
       return;
     }
     Navigator.of(
@@ -344,6 +377,36 @@ class HomeScreen extends StatelessWidget {
           return result ?? false;
         }
 
+        Future<bool> confirmDeleteAccount() async {
+          final result = await showDialog<bool>(
+            context: sheetContext,
+            barrierDismissible: false,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: const Text('Accountni o‘chirish'),
+                content: const Text(
+                  'Siz accountni butunlay o‘chirmoqchimisiz? Agar bunday qilsangiz, barcha ma’lumotlaringizni qayta tiklab bo‘lmaydi.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('Bekor qilish'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Roziman'),
+                  ),
+                ],
+              );
+            },
+          );
+          return result ?? false;
+        }
+
         return SafeArea(
           child: StatefulBuilder(
             builder: (sheetContext, setSheetState) {
@@ -369,6 +432,34 @@ class HomeScreen extends StatelessWidget {
                     ScaffoldMessenger.of(sheetContext).showSnackBar(
                       const SnackBar(content: Text('Google akkaunti ulandi')),
                     );
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
+                      ),
+                    );
+                  }
+                } finally {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => googleLoading = false);
+                  }
+                }
+              }
+
+              Future<void> deleteAccount() async {
+                if (googleLoading) return;
+                final accepted = await confirmDeleteAccount();
+                if (!accepted) return;
+                setSheetState(() => googleLoading = true);
+                try {
+                  await ApiClient.deleteAccount(session.accessToken);
+                  if (sheetContext.mounted) {
+                    Navigator.of(sheetContext).pop();
+                    onLogout();
                   }
                 } catch (e) {
                   if (sheetContext.mounted) {
@@ -475,6 +566,16 @@ class HomeScreen extends StatelessWidget {
                             ? phone!
                             : 'Belgilanmagan',
                       ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: onChangePassword,
+                          icon: const Icon(Icons.lock_reset_rounded),
+                          label: const Text('Parolni almashtirish'),
+                        ),
+                      ),
                       if ((session.user['google_sub']?.toString() ?? '')
                           .isEmpty) ...[
                         const SizedBox(height: 10),
@@ -513,6 +614,23 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                           child: const Text('Chiqish'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: googleLoading ? null : deleteAccount,
+                          icon: const Icon(Icons.delete_forever_rounded),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: const BorderSide(color: Color(0xFFEF9A9A)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          label: const Text('Delete account'),
                         ),
                       ),
                     ],

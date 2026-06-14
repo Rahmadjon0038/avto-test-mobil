@@ -7,12 +7,15 @@ import '../core/app_constants.dart';
 import '../models/answer_question.dart';
 import '../models/auth_session.dart';
 import '../services/api_client.dart';
+import '../services/question_page_settings_store.dart';
+import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class MarathonPage extends StatefulWidget {
-  const MarathonPage({super.key, required this.session});
+  const MarathonPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<MarathonPage> createState() => _MarathonPageState();
@@ -33,6 +36,8 @@ class _MarathonPageState extends State<MarathonPage> {
   bool _isLoadingMore = false;
   bool _sessionExpired = false;
   bool _resultShown = false;
+  bool _shuffleQuestions = false;
+  bool _autoAdvanceEnabled = true;
   Timer? _advanceTimer;
 
   @override
@@ -50,6 +55,11 @@ class _MarathonPageState extends State<MarathonPage> {
   }
 
   Future<void> _loadInitial() async {
+    final settings = await QuestionPageSettingsStore.load();
+    if (!mounted) return;
+    _shuffleQuestions = settings.shuffleQuestions;
+    _autoAdvanceEnabled = settings.autoAdvance;
+
     setState(() {
       _isLoading = true;
       _resultShown = false;
@@ -69,6 +79,9 @@ class _MarathonPageState extends State<MarathonPage> {
         limit: 20,
       );
       final fetched = _parseQuestions(body);
+      if (_shuffleQuestions) {
+        fetched.shuffle();
+      }
       if (!mounted) return;
       setState(() {
         _bank.addAll(fetched);
@@ -86,9 +99,11 @@ class _MarathonPageState extends State<MarathonPage> {
             widget.session.refreshToken!,
           );
           if (!mounted) return;
+          final active = refreshed.copyWith(user: widget.session.user);
           setState(() {
-            _accessToken = refreshed.accessToken;
+            _accessToken = active.accessToken;
           });
+          widget.onSessionUpdated?.call(active);
           await _loadInitial();
           return;
         } on ApiException catch (_) {
@@ -123,6 +138,9 @@ class _MarathonPageState extends State<MarathonPage> {
         limit: 20,
       );
       final fetched = _parseQuestions(body);
+      if (_shuffleQuestions) {
+        fetched.shuffle();
+      }
       if (!mounted) return const <AnswerQuestion>[];
       setState(() {
         _bank.addAll(fetched);
@@ -138,9 +156,11 @@ class _MarathonPageState extends State<MarathonPage> {
             widget.session.refreshToken!,
           );
           if (!mounted) return const <AnswerQuestion>[];
+          final active = refreshed.copyWith(user: widget.session.user);
           setState(() {
-            _accessToken = refreshed.accessToken;
+            _accessToken = active.accessToken;
           });
+          widget.onSessionUpdated?.call(active);
           return _loadMoreBank();
         } on ApiException catch (_) {
           if (!mounted) return const <AnswerQuestion>[];
@@ -218,7 +238,7 @@ class _MarathonPageState extends State<MarathonPage> {
 
     final isCorrect = optionIndex == question.correctIndex;
     if (!isCorrect) {
-      if (_currentIndex < _visibleQuestions.length - 1) {
+      if (_autoAdvanceEnabled && _currentIndex < _visibleQuestions.length - 1) {
         _scheduleAdvance(_currentIndex + 1);
       }
       return;
@@ -234,11 +254,13 @@ class _MarathonPageState extends State<MarathonPage> {
         _visibleQuestions.add(nextQuestion);
         _nextBankIndex += 1;
       });
-      _scheduleAdvance(_currentIndex + 1);
+      if (_autoAdvanceEnabled) {
+        _scheduleAdvance(_currentIndex + 1);
+      }
       return;
     }
 
-    if (_currentIndex < _visibleQuestions.length - 1) {
+    if (_autoAdvanceEnabled && _currentIndex < _visibleQuestions.length - 1) {
       _scheduleAdvance(_currentIndex + 1);
     }
   }
@@ -453,8 +475,12 @@ class _MarathonPageState extends State<MarathonPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: _goToNextQuestion,
-          onSwipeRight: _goToPreviousQuestion,
+          onSwipeLeft: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToNextQuestion,
+          onSwipeRight: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: _isLoading
@@ -527,6 +553,24 @@ class _MarathonPageState extends State<MarathonPage> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _SettingsButton(
+                            onTap: () => showQuestionPageSettingsSheet(
+                              context: context,
+                              shuffleQuestions: _shuffleQuestions,
+                              autoAdvance: _autoAdvanceEnabled,
+                              onShuffleChanged: (value) {
+                                setState(() {
+                                  _shuffleQuestions = value;
+                                });
+                              },
+                              onAutoAdvanceChanged: (value) {
+                                setState(() {
+                                  _autoAdvanceEnabled = value;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -606,12 +650,14 @@ class _MarathonPageState extends State<MarathonPage> {
                                       return Material(
                                         color: Colors.transparent,
                                         child: InkWell(
-                                          onTap: () {
-                                            setState(() {
-                                              _currentIndex = index;
-                                            });
-                                            _scrollCurrentQuestionIntoView();
-                                          },
+                                          onTap: _resultShown
+                                              ? () => _showLockedRestartModal()
+                                              : () {
+                                                  setState(() {
+                                                    _currentIndex = index;
+                                                  });
+                                                  _scrollCurrentQuestionIntoView();
+                                                },
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
@@ -735,7 +781,9 @@ class _MarathonPageState extends State<MarathonPage> {
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(18),
                                       child: InkWell(
-                                        onTap: _answers.containsKey(question.id)
+                                        onTap: _resultShown
+                                            ? () => _showLockedRestartModal()
+                                            : _answers.containsKey(question.id)
                                             ? null
                                             : () {
                                                 _answerCurrent(index);
@@ -815,65 +863,25 @@ class _MarathonPageState extends State<MarathonPage> {
                                   );
                                 }),
                                 const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 46,
-                                        child: FilledButton.tonal(
-                                          onPressed: () async {
-                                            if (_resultShown) return;
-                                            if (_answers.containsKey(
-                                              question.id,
-                                            )) {
-                                              _saveAnswer(
-                                                _currentIndex,
-                                                _answers[question.id]!,
-                                              );
-                                            }
-                                            await _showFinishModal();
-                                          },
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFFBCD2FF,
-                                            ),
-                                            foregroundColor: const Color(
-                                              0xFF0A4DB5,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
-                                          ),
-                                          child: const Text('Yakunlash'),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    SizedBox(
-                                      height: 46,
-                                      child: FilledButton.tonal(
-                                        onPressed: _loadInitial,
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFFF4D1D1,
-                                          ),
-                                          foregroundColor: const Color(
-                                            0xFFD64545,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                          ),
-                                        ),
-                                        child: const Text('Qayta boshlash'),
-                                      ),
-                                    ),
-                                  ],
+                                QuestionExplanationFooter(
+                                  questionText: question.text,
+                                  correctAnswer: question.correctAnswer,
+                                  explanation: question.explanation,
+                                  audioUrl: question.audio,
+                                  onFinish: _resultShown
+                                      ? () => _showLockedRestartModal()
+                                      : () async {
+                                          if (_answers.containsKey(
+                                            question.id,
+                                          )) {
+                                            _saveAnswer(
+                                              _currentIndex,
+                                              _answers[question.id]!,
+                                            );
+                                          }
+                                          await _showFinishModal();
+                                        },
+                                  onRestart: _loadInitial,
                                 ),
                               ],
                             ),
@@ -901,6 +909,39 @@ class _MarathonPageState extends State<MarathonPage> {
       _currentIndex -= 1;
     });
     _scrollCurrentQuestionIntoView();
+  }
+
+  Future<void> _showLockedRestartModal() {
+    return showTestLockedRestartSheet(
+      context: context,
+      title: 'Test tugadi',
+      message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
+      onRestart: () async => _loadInitial(),
+      restartLabel: 'Qayta boshlash',
+    );
+  }
+}
+
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: const SizedBox(
+          width: 46,
+          height: 46,
+          child: Icon(Icons.settings_outlined, size: 22),
+        ),
+      ),
+    );
   }
 }
 

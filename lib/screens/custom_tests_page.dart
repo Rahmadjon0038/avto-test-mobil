@@ -7,9 +7,14 @@ import '../services/api_client.dart';
 import 'custom_test_page.dart';
 
 class CustomTestsPage extends StatefulWidget {
-  const CustomTestsPage({super.key, required this.session});
+  const CustomTestsPage({
+    super.key,
+    required this.session,
+    this.onSessionUpdated,
+  });
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<CustomTestsPage> createState() => _CustomTestsPageState();
@@ -36,12 +41,14 @@ class _CustomTestsPageState extends State<CustomTestsPage> {
 
       final refreshed = await ApiClient.refresh(widget.session.refreshToken!);
       if (!mounted) return const <TicketSummary>[];
+      final active = refreshed.copyWith(user: widget.session.user);
 
       setState(() {
-        _accessToken = refreshed.accessToken;
+        _accessToken = active.accessToken;
       });
+      widget.onSessionUpdated?.call(active);
 
-      return ApiClient.customTests(refreshed.accessToken);
+      return ApiClient.customTests(active.accessToken);
     }
   }
 
@@ -97,6 +104,7 @@ class _CustomTestsPageState extends State<CustomTestsPage> {
                                     MaterialPageRoute(
                                       builder: (_) => CustomTestPage(
                                         session: widget.session,
+                                        onSessionUpdated: widget.onSessionUpdated,
                                         ticket: ticket,
                                       ),
                                     ),

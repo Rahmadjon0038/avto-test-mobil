@@ -7,12 +7,18 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/exam_question.dart';
 import '../services/api_client.dart';
+import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class ExamPage extends StatefulWidget {
-  const ExamPage({super.key, required this.session});
+  const ExamPage({
+    super.key,
+    required this.session,
+    this.onSessionUpdated,
+  });
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<ExamPage> createState() => _ExamPageState();
@@ -112,9 +118,11 @@ class _ExamPageState extends State<ExamPage> {
     try {
       final refreshed = await ApiClient.refresh(refreshToken);
       if (!mounted) return false;
+      final active = refreshed.copyWith(user: widget.session.user);
       setState(() {
-        _accessToken = refreshed.accessToken;
+        _accessToken = active.accessToken;
       });
+      widget.onSessionUpdated?.call(active);
       return true;
     } on ApiException {
       if (!mounted) return false;
@@ -601,13 +609,14 @@ class _ExamPageState extends State<ExamPage> {
   @override
   Widget build(BuildContext context) {
     final question = _currentQuestion;
+    final locked = _locked;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: _goToNextQuestion,
-          onSwipeRight: _goToPreviousQuestion,
+          onSwipeLeft: locked ? () => _showLockedRestartModal() : _goToNextQuestion,
+          onSwipeRight: locked ? () => _showLockedRestartModal() : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: _isLoading
@@ -783,10 +792,12 @@ class _ExamPageState extends State<ExamPage> {
                                                     alpha: 0.85,
                                                   );
 
-                                            return Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onTap: () {
+                                          return Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                                onTap: locked
+                                                    ? () => _showLockedRestartModal()
+                                                    : () {
                                                   setState(() {
                                                     _currentIndex = index;
                                                   });
@@ -925,9 +936,8 @@ class _ExamPageState extends State<ExamPage> {
                                               18,
                                             ),
                                             child: InkWell(
-                                              onTap: _locked
-                                                  ? () =>
-                                                        _showLockedRestartModal()
+                                              onTap: locked
+                                                  ? () => _showLockedRestartModal()
                                                   : _submitting
                                                   ? null
                                                   : () => _saveAnswer(
@@ -1032,52 +1042,18 @@ class _ExamPageState extends State<ExamPage> {
                               ),
                       ),
                       const SizedBox(height: 12),
-                      SafeArea(
-                        top: false,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 46,
-                                child: FilledButton.tonal(
-                                  onPressed: _locked ? null : _finishExam,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFFBCD2FF),
-                                    foregroundColor: const Color(0xFF0A4DB5),
-                                    disabledForegroundColor: const Color(
-                                      0xFF5C85C9,
-                                    ),
-                                    disabledBackgroundColor: const Color(
-                                      0xFFDCE9FF,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: const Text('Yakunlash'),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              height: 46,
-                              child: FilledButton.tonal(
-                                onPressed: _restartExam,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF4D1D1),
-                                  foregroundColor: const Color(0xFFD64545),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                  ),
-                                ),
-                                child: const Text('Qayta boshlash'),
-                              ),
-                            ),
-                          ],
-                        ),
+                      Builder(
+                        builder: (context) {
+                          final currentQuestion = question!;
+                          return QuestionExplanationFooter(
+                            questionText: currentQuestion.text,
+                            correctAnswer: currentQuestion.correctAnswer,
+                            explanation: currentQuestion.explanation,
+                            audioUrl: currentQuestion.audio,
+                            onFinish: locked ? () => _showLockedRestartModal() : _finishExam,
+                            onRestart: _restartExam,
+                          );
+                        },
                       ),
                     ],
                   ),

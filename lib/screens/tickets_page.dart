@@ -7,9 +7,14 @@ import '../services/api_client.dart';
 import 'ticket_test_page.dart';
 
 class TicketsPage extends StatefulWidget {
-  const TicketsPage({super.key, required this.session});
+  const TicketsPage({
+    super.key,
+    required this.session,
+    this.onSessionUpdated,
+  });
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<TicketsPage> createState() => _TicketsPageState();
@@ -36,12 +41,14 @@ class _TicketsPageState extends State<TicketsPage> {
 
       final refreshed = await ApiClient.refresh(widget.session.refreshToken!);
       if (!mounted) return const <TicketSummary>[];
+      final active = refreshed.copyWith(user: widget.session.user);
 
       setState(() {
-        _accessToken = refreshed.accessToken;
+        _accessToken = active.accessToken;
       });
+      widget.onSessionUpdated?.call(active);
 
-      return ApiClient.tickets(refreshed.accessToken);
+      return ApiClient.tickets(active.accessToken);
     }
   }
 
@@ -97,6 +104,7 @@ class _TicketsPageState extends State<TicketsPage> {
                                     MaterialPageRoute(
                                       builder: (_) => TicketTestPage(
                                         session: widget.session,
+                                        onSessionUpdated: widget.onSessionUpdated,
                                         ticket: ticket,
                                       ),
                                     ),

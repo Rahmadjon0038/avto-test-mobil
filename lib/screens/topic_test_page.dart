@@ -6,6 +6,7 @@ import '../models/auth_session.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../services/api_client.dart';
+import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class TopicTestPage extends StatefulWidget {
@@ -43,8 +44,8 @@ class _TopicTestPageState extends State<TopicTestPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: _goToNextQuestion,
-          onSwipeRight: _goToPreviousQuestion,
+          onSwipeLeft: _resultShown ? () => _showLockedRestartModal() : _goToNextQuestion,
+          onSwipeRight: _resultShown ? () => _showLockedRestartModal() : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: FutureBuilder<List<TopicQuestion>>(
@@ -78,6 +79,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
                 final isLast = _currentIndex == questions.length - 1;
+                final locked = _resultShown;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,6 +143,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                   .map((question) => question.correctIndex)
                                   .toList(),
                               onTap: (index) {
+                                if (locked) {
+                                  _showLockedRestartModal();
+                                  return;
+                                }
                                 setState(() {
                                   _currentIndex = index;
                                   _selectedIndex = _answerFor(_currentIndex);
@@ -226,7 +232,9 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(18),
                                   child: InkWell(
-                                    onTap: _selectedIndex == null
+                                    onTap: locked
+                                        ? () => _showLockedRestartModal()
+                                        : _selectedIndex == null
                                         ? () {
                                             setState(() {
                                               _selectedIndex = index;
@@ -306,42 +314,18 @@ class _TopicTestPageState extends State<TopicTestPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 46,
-                            child: FilledButton.tonal(
-                              onPressed: () => _finishNow(questions),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFCFE0FF),
-                                foregroundColor: const Color(0xFF0D57C6),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                              child: const Text('Yakunlash'),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: SizedBox(
-                            height: 46,
-                            child: FilledButton.tonal(
-                              onPressed: _restartTest,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFF8C9C9),
-                                foregroundColor: const Color(0xFFD93838),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                              child: const Text('Qayta boshlash'),
-                            ),
-                          ),
-                        ),
-                      ],
+                    QuestionExplanationFooter(
+                      questionText: question.text,
+                      correctAnswer: question.correctIndex >= 0 &&
+                              question.correctIndex < question.options.length
+                          ? question.options[question.correctIndex]
+                          : question.options.isNotEmpty
+                              ? question.options.first
+                              : '',
+                      explanation: question.explanation,
+                      audioUrl: question.audio,
+                      onFinish: locked ? () => _showLockedRestartModal() : () => _finishNow(questions),
+                      onRestart: _restartTest,
                     ),
                   ],
                 );
@@ -425,6 +409,16 @@ class _TopicTestPageState extends State<TopicTestPage> {
       _answers.clear();
       _resultShown = false;
     });
+  }
+
+  Future<void> _showLockedRestartModal() {
+    return showTestLockedRestartSheet(
+      context: context,
+      title: 'Test tugadi',
+      message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
+      onRestart: () async => _restartTest(),
+      restartLabel: 'Qayta boshlash',
+    );
   }
 
   void _goToNextQuestion() {

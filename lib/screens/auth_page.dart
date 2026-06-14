@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_colors.dart';
@@ -25,10 +26,9 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   late AuthMode _mode = widget.initialMode;
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _forgotEmailController = TextEditingController();
+  final _forgotPhoneController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['email'],
     clientId: Platform.isIOS || Platform.isMacOS ? _googleIosClientId : null,
@@ -41,10 +41,9 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   void dispose() {
-    _fullNameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _forgotEmailController.dispose();
+    _forgotPhoneController.dispose();
     super.dispose();
   }
 
@@ -53,7 +52,7 @@ class _AuthPageState extends State<AuthPage> {
       _mode = mode;
       _error = null;
       if (mode == AuthMode.login) {
-        _forgotEmailController.clear();
+        _forgotPhoneController.clear();
       }
     });
   }
@@ -79,7 +78,6 @@ class _AuthPageState extends State<AuthPage> {
               password: _passwordController.text.trim(),
             )
           : await ApiClient.register(
-              fullName: _fullNameController.text.trim(),
               phone: '+998$phoneDigits',
               password: _passwordController.text.trim(),
             );
@@ -87,7 +85,15 @@ class _AuthPageState extends State<AuthPage> {
       Navigator.of(context).pop(session);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      final message = e.toString().replaceFirst('Exception: ', '');
+      if (_mode == AuthMode.register && message.toLowerCase().contains('allaqachon')) {
+        setState(() {
+          _mode = AuthMode.login;
+          _error = 'Bu raqam allaqachon ro‘yxatdan o‘tgan, iltimos tizimga kiring';
+        });
+      } else {
+        setState(() => _error = message);
+      }
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -130,11 +136,11 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  Future<bool> _requestPasswordReset() async {
-    final email = _forgotEmailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Email kiriting');
-      return false;
+  Future<String?> _requestPasswordReset() async {
+    final phoneDigits = _normalizePhoneDigits(_forgotPhoneController.text);
+    if (phoneDigits.length != 9) {
+      setState(() => _error = 'Telefon raqam noto‘g‘ri');
+      return null;
     }
 
     setState(() {
@@ -143,19 +149,111 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final response = await ApiClient.requestPasswordReset(email: email);
-      if (!mounted) return false;
-      final message = response.message.isNotEmpty
-          ? response.message
-          : '6 xonali kod emailingizga yuborildi';
+      final response = await ApiClient.requestPasswordReset(
+        phone: '+998$phoneDigits',
+      );
+      if (!mounted) return null;
+      final tempPassword =
+          response.temporaryPassword?.trim().isNotEmpty == true
+              ? response.temporaryPassword!.trim()
+              : null;
+      final message = tempPassword != null
+          ? 'Bir martalik parol: $tempPassword'
+          : response.message.isNotEmpty
+              ? response.message
+              : 'Bir martalik parol yaratildi';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
-      return true;
+      if (tempPassword != null) {
+        final phoneDigits = _normalizePhoneDigits(_forgotPhoneController.text);
+        if (phoneDigits.isNotEmpty) {
+          _phoneController.text = _formatUzPhoneDigits(phoneDigits);
+        }
+        _passwordController.text = tempPassword;
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: const Text('Bir martalik parol'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Parol yaratildi. Uni nusxalab olishingiz mumkin. Tizimga kirgandan keyin albatta parolni almashtiring.',
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F6FB),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SelectableText(
+                              tempPassword,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: tempPassword),
+                              );
+                              if (dialogContext.mounted) {
+                                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Parol nusxalandi'),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.copy_rounded, size: 18),
+                            label: const Text('Nusxalash'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Keyin'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      _switchMode(AuthMode.login);
+                      _submit();
+                    },
+                    child: const Text('Kirish'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      }
+      return tempPassword;
     } catch (e) {
-      if (!mounted) return false;
+      if (!mounted) return null;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-      return false;
+      return null;
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -164,34 +262,86 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _openForgotPasswordDialog() async {
-    _forgotEmailController.clear();
+    _forgotPhoneController.clear();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Parolni tiklash'),
-          content: TextField(
-            controller: _forgotEmailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(hintText: 'Email manzil'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Bekor qilish'),
-            ),
-            FilledButton(
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      final success = await _requestPasswordReset();
-                      if (success && dialogContext.mounted) {
-                        Navigator.of(dialogContext).pop();
-                      }
-                    },
-              child: const Text('Yuborish'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Parolni tiklash'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Telefon raqamingizni kiriting. Sizga bir martalik parol beriladi.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _forgotPhoneController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: const [_UzPhoneInputFormatter()],
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: '90 123 45 67',
+                      hintStyle: TextStyle(
+                        color: Color(0xFFB8C0CC),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      prefixText: '+998 ',
+                      prefixStyle: TextStyle(
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      filled: true,
+                      fillColor: Color(0xFFF7F9FC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Bekor qilish'),
+                ),
+                FilledButton(
+                  onPressed: _loading
+                      ? null
+                      : () async {
+                          final tempPassword = await _requestPasswordReset();
+                          if (tempPassword != null && dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                            if (mounted) {
+                              setState(() {
+                                _mode = AuthMode.login;
+                              });
+                            }
+                          }
+                          setDialogState(() {});
+                        },
+                  child: Text(_loading ? 'Yuborilmoqda...' : 'Yuborish'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -201,7 +351,7 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
 
-    return Scaffold(
+      return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
         color: Colors.white,
@@ -278,30 +428,11 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _GoogleButton(
-                        loading: _googleLoading,
-                        onPressed: _googleLoading ? null : _googleLogin,
-                      ),
-                      const SizedBox(height: 14),
                       Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (!isLogin) ...[
-                              _RoundedField(
-                                controller: _fullNameController,
-                                label: 'To‘liq ism',
-                                hint: 'To‘liq ism',
-                                icon: Icons.person_rounded,
-                                textInputAction: TextInputAction.next,
-                                validator: (value) =>
-                                    value == null || value.trim().isEmpty
-                                    ? 'Ism kiriting'
-                                    : null,
-                              ),
-                              const SizedBox(height: 14),
-                            ],
                             _RoundedField(
                               controller: _phoneController,
                               label: 'Telefon raqam',
@@ -309,6 +440,7 @@ class _AuthPageState extends State<AuthPage> {
                               icon: Icons.phone_rounded,
                               keyboardType: TextInputType.phone,
                               prefixText: '+998 ',
+                              inputFormatters: const [_UzPhoneInputFormatter()],
                               textInputAction: TextInputAction.next,
                               validator: (value) {
                                 final digits = _normalizePhoneDigits(
@@ -366,6 +498,28 @@ class _AuthPageState extends State<AuthPage> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (!isLogin) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3CD),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE7D08B),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Ro‘yxatdan o‘tgandan keyin tizimga kirish uchun telefon raqam va parol ishlatiladi.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF6B5B20),
+                                    height: 1.35,
                                   ),
                                 ),
                               ),
@@ -476,6 +630,11 @@ class _AuthPageState extends State<AuthPage> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 14),
+                            _GoogleButton(
+                              loading: _googleLoading,
+                              onPressed: _googleLoading ? null : _googleLogin,
+                            ),
                           ],
                         ),
                       ),
@@ -496,6 +655,34 @@ String _normalizePhoneDigits(String value) {
   if (digits.isEmpty) return '';
   final local = digits.startsWith('998') ? digits.substring(3) : digits;
   return local.length > 9 ? local.substring(0, 9) : local;
+}
+
+String _formatUzPhoneDigits(String value) {
+  final digits = _normalizePhoneDigits(value);
+  if (digits.isEmpty) return '';
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length && i < 9; i++) {
+    if (i == 2 || i == 5 || i == 7) buffer.write(' ');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
+class _UzPhoneInputFormatter extends TextInputFormatter {
+  const _UzPhoneInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = _normalizePhoneDigits(newValue.text);
+    final formatted = _formatUzPhoneDigits(digits);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
 }
 
 class _BackCircle extends StatelessWidget {
@@ -687,6 +874,7 @@ class _RoundedField extends StatelessWidget {
     this.suffix,
     this.textInputAction,
     this.validator,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -699,6 +887,7 @@ class _RoundedField extends StatelessWidget {
   final Widget? suffix;
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -707,6 +896,7 @@ class _RoundedField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
+      inputFormatters: inputFormatters,
       validator: validator,
       style: const TextStyle(
         fontSize: 16,

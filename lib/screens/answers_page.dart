@@ -6,11 +6,13 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/answer_question.dart';
 import '../services/api_client.dart';
+import '../widgets/question_explanation_footer.dart';
 
 class AnswersPage extends StatefulWidget {
-  const AnswersPage({super.key, required this.session});
+  const AnswersPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<AnswersPage> createState() => _AnswersPageState();
@@ -106,9 +108,11 @@ class _AnswersPageState extends State<AnswersPage> {
             widget.session.refreshToken!,
           );
           if (!mounted) return;
+          final active = refreshed.copyWith(user: widget.session.user);
           setState(() {
-            _accessToken = refreshed.accessToken;
+            _accessToken = active.accessToken;
           });
+          widget.onSessionUpdated?.call(active);
           await _loadPage();
           return;
         } on ApiException catch (_) {
@@ -436,9 +440,9 @@ class _AnswerCard extends StatelessWidget {
           Text(
             question.text,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: FontWeight.w800,
-              height: 1.22,
+              height: 1.3,
               color: AppColors.text,
             ),
           ),
@@ -533,11 +537,38 @@ class _AnswerCard extends StatelessWidget {
               ),
             ),
           ),
+          if (question.audio.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  showQuestionAudioExplanationSheet(
+                    context: context,
+                    audioUrl: question.audio,
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                icon: const Icon(Icons.volume_up_rounded, size: 18),
+                label: const Text(
+                  'Audio izoh',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
           if (question.explanation.trim().isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
@@ -545,9 +576,9 @@ class _AnswerCard extends StatelessWidget {
               child: Text(
                 question.explanation,
                 style: TextStyle(
-                  fontSize: 11.5,
-                  height: 1.35,
-                  color: AppColors.text.withValues(alpha: 0.82),
+                  fontSize: 13.5,
+                  height: 1.45,
+                  color: AppColors.text.withValues(alpha: 0.86),
                 ),
               ),
             ),

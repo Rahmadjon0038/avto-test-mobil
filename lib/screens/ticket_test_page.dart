@@ -6,6 +6,8 @@ import '../models/auth_session.dart';
 import '../models/ticket_summary.dart';
 import '../models/topic_question.dart';
 import '../services/api_client.dart';
+import '../services/question_page_settings_store.dart';
+import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class TicketTestPage extends StatefulWidget {
@@ -13,10 +15,12 @@ class TicketTestPage extends StatefulWidget {
     super.key,
     required this.session,
     required this.ticket,
+    this.onSessionUpdated,
   });
 
   final AuthSession session;
   final TicketSummary ticket;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<TicketTestPage> createState() => _TicketTestPageState();
@@ -28,6 +32,8 @@ class _TicketTestPageState extends State<TicketTestPage> {
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _resultShown = false;
+  bool _shuffleQuestions = false;
+  bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
   late String _accessToken;
   final ScrollController _scrollController = ScrollController();
@@ -41,11 +47,21 @@ class _TicketTestPageState extends State<TicketTestPage> {
   }
 
   Future<List<TopicQuestion>> _loadQuestions() async {
+    final settings = await QuestionPageSettingsStore.load();
+    if (!mounted) return const <TopicQuestion>[];
+    _shuffleQuestions = settings.shuffleQuestions;
+    _autoAdvanceEnabled = settings.autoAdvance;
+
     try {
-      return await ApiClient.ticketQuestions(
+      final questions = await ApiClient.ticketQuestions(
         accessToken: _accessToken,
         ticketId: widget.ticket.id,
       );
+      final result = List<TopicQuestion>.from(questions);
+      if (_shuffleQuestions) {
+        result.shuffle();
+      }
+      return result;
     } on ApiException catch (error) {
       final refreshToken = widget.session.refreshToken;
       if (error.statusCode != 401 ||
@@ -56,13 +72,15 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
       final refreshed = await ApiClient.refresh(refreshToken);
       if (!mounted) return const <TopicQuestion>[];
+      final active = refreshed.copyWith(user: widget.session.user);
 
       setState(() {
-        _accessToken = refreshed.accessToken;
+        _accessToken = active.accessToken;
       });
+      widget.onSessionUpdated?.call(active);
 
       return ApiClient.ticketQuestions(
-        accessToken: refreshed.accessToken,
+        accessToken: active.accessToken,
         ticketId: widget.ticket.id,
       );
     }
@@ -74,8 +92,12 @@ class _TicketTestPageState extends State<TicketTestPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: _goToNextQuestion,
-          onSwipeRight: _goToPreviousQuestion,
+          onSwipeLeft: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToNextQuestion,
+          onSwipeRight: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: FutureBuilder<List<TopicQuestion>>(
@@ -108,6 +130,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
+                final locked = _resultShown;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -153,6 +176,24 @@ class _TicketTestPageState extends State<TicketTestPage> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        _SettingsButton(
+                          onTap: () => showQuestionPageSettingsSheet(
+                            context: context,
+                            shuffleQuestions: _shuffleQuestions,
+                            autoAdvance: _autoAdvanceEnabled,
+                            onShuffleChanged: (value) {
+                              setState(() {
+                                _shuffleQuestions = value;
+                              });
+                            },
+                            onAutoAdvanceChanged: (value) {
+                              setState(() {
+                                _autoAdvanceEnabled = value;
+                              });
+                            },
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 18),
@@ -170,6 +211,10 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                   .map((question) => question.correctIndex)
                                   .toList(),
                               onTap: (index) {
+                                if (locked) {
+                                  _showLockedRestartModal();
+                                  return;
+                                }
                                 setState(() {
                                   _currentIndex = index;
                                   _selectedIndex = _answerFor(_currentIndex);
@@ -255,7 +300,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(18),
                                   child: InkWell(
-                                    onTap: _answerFor(_currentIndex) != null
+                                    onTap: locked
+                                        ? () => _showLockedRestartModal()
+                                        : _answerFor(_currentIndex) != null
                                         ? null
                                         : () {
                                             setState(() {
@@ -263,7 +310,8 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                             });
                                             _saveAnswer(_currentIndex, index);
                                             final questions = _loadedQuestions;
-                                            if (questions != null &&
+                                            if (_autoAdvanceEnabled &&
+                                                questions != null &&
                                                 _currentIndex <
                                                     questions.length - 1) {
                                               _advanceToNextQuestion();
@@ -338,43 +386,21 @@ class _TicketTestPageState extends State<TicketTestPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 46,
-                            child: FilledButton.tonal(
-                              onPressed: () => _finishNow(questions),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFBCD2FF),
-                                foregroundColor: const Color(0xFF0A4DB5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text('Yakunlash'),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          height: 46,
-                          child: FilledButton.tonal(
-                            onPressed: _restartTest,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFF4D1D1),
-                              foregroundColor: const Color(0xFFD64545),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                              ),
-                            ),
-                            child: const Text('Qayta boshlash'),
-                          ),
-                        ),
-                      ],
+                    QuestionExplanationFooter(
+                      questionText: question.text,
+                      correctAnswer:
+                          question.correctIndex >= 0 &&
+                              question.correctIndex < question.options.length
+                          ? question.options[question.correctIndex]
+                          : question.options.isNotEmpty
+                          ? question.options.first
+                          : '',
+                      explanation: question.explanation,
+                      audioUrl: question.audio,
+                      onFinish: locked
+                          ? () => _showLockedRestartModal()
+                          : () => _finishNow(questions),
+                      onRestart: _restartTest,
                     ),
                   ],
                 );
@@ -479,6 +505,16 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _loadedQuestions = null;
       _questionsFuture = _loadQuestions();
     });
+  }
+
+  Future<void> _showLockedRestartModal() {
+    return showTestLockedRestartSheet(
+      context: context,
+      title: 'Test tugadi',
+      message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
+      onRestart: () async => _restartTest(),
+      restartLabel: 'Qayta boshlash',
+    );
   }
 
   void _advanceToNextQuestion() {
@@ -784,6 +820,29 @@ class _ResultRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: const SizedBox(
+          width: 46,
+          height: 46,
+          child: Icon(Icons.settings_outlined, size: 22),
+        ),
       ),
     );
   }

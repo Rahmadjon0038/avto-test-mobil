@@ -6,6 +6,7 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
 import '../models/password_reset_response.dart';
+import '../models/video_lesson.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../models/ticket_summary.dart';
@@ -37,18 +38,13 @@ class ApiClient {
   }
 
   static Future<AuthSession> register({
-    required String fullName,
     required String phone,
     required String password,
   }) async {
     final response = await http.post(
       Uri.parse('$apiBaseUrl/api/auth/register'),
       headers: _jsonHeaders(),
-      body: jsonEncode({
-        'fullName': fullName,
-        'phone': phone,
-        'password': password,
-      }),
+      body: jsonEncode({'phone': phone, 'password': password}),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
@@ -122,12 +118,12 @@ class ApiClient {
   }
 
   static Future<PasswordResetResponse> requestPasswordReset({
-    required String email,
+    required String phone,
   }) async {
     final response = await http.post(
       Uri.parse('$apiBaseUrl/api/auth/password-reset/request'),
       headers: _jsonHeaders(),
-      body: jsonEncode({'email': email}),
+      body: jsonEncode({'phone': phone}),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
@@ -136,6 +132,27 @@ class ApiClient {
       );
     }
     return PasswordResetResponse.fromJson(body);
+  }
+
+  static Future<void> changePassword({
+    required String accessToken,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/auth/password-change'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(
+        body['error']?.toString() ?? 'Parolni almashtirish amalga oshmadi',
+      );
+    }
   }
 
   static Future<AuthSession> refresh(String refreshToken) async {
@@ -183,6 +200,17 @@ class ApiClient {
       Uri.parse('$apiBaseUrl/api/auth/logout'),
       headers: {'Cookie': 'refresh_token=$refreshToken'},
     );
+  }
+
+  static Future<void> deleteAccount(String accessToken) async {
+    final response = await http.delete(
+      Uri.parse('$apiBaseUrl/api/auth/account'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(body['error']?.toString() ?? 'Account o‘chirilmadi');
+    }
   }
 
   static Future<List<TopicSummary>> topics(String accessToken) async {
@@ -241,6 +269,26 @@ class ApiClient {
     return rawTests
         .whereType<Map>()
         .map((test) => TicketSummary.fromJson(Map<String, dynamic>.from(test)))
+        .toList();
+  }
+
+  static Future<List<VideoLesson>> videos(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/videos'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Video darslar yuklanmadi',
+      );
+    }
+    final rawVideos = body['videos'];
+    if (rawVideos is! List) return const [];
+    return rawVideos
+        .whereType<Map>()
+        .map((video) => VideoLesson.fromJson(Map<String, dynamic>.from(video)))
         .toList();
   }
 

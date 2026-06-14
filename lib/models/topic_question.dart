@@ -5,6 +5,7 @@ class TopicQuestion {
     required this.correctIndex,
     required this.explanation,
     required this.image,
+    required this.audio,
   });
 
   final String text;
@@ -12,6 +13,7 @@ class TopicQuestion {
   final int correctIndex;
   final String explanation;
   final String image;
+  final String audio;
 
   factory TopicQuestion.fromJson(Map<String, dynamic> json) {
     final rawOptions = json['options'];
@@ -23,6 +25,7 @@ class TopicQuestion {
       correctIndex: int.tryParse(json['correctIndex']?.toString() ?? '') ?? 0,
       explanation: (json['explanation'] ?? '').toString(),
       image: (json['image'] ?? '').toString(),
+      audio: (json['audio'] ?? '').toString(),
     );
   }
 }

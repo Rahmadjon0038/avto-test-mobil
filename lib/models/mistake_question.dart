@@ -13,6 +13,7 @@ class MistakeQuestion {
     required this.explanation,
     required this.hasImage,
     required this.wrongAnswer,
+    required this.audio,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class MistakeQuestion {
   final String explanation;
   final bool hasImage;
   final int? wrongAnswer;
+  final String audio;
 
   factory MistakeQuestion.fromJson(Map<String, dynamic> json) {
     final rawOptions = json['options'];
@@ -50,6 +52,7 @@ class MistakeQuestion {
       wrongAnswer: json['wrongAnswer'] == null
           ? null
           : int.tryParse(json['wrongAnswer'].toString()),
+      audio: (json['audio'] ?? '').toString(),
     );
   }
 }

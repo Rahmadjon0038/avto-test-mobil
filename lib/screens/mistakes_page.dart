@@ -5,12 +5,15 @@ import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
 import '../services/api_client.dart';
+import '../services/question_page_settings_store.dart';
+import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class MistakesPage extends StatefulWidget {
-  const MistakesPage({super.key, required this.session});
+  const MistakesPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<MistakesPage> createState() => _MistakesPageState();
@@ -22,6 +25,9 @@ class _MistakesPageState extends State<MistakesPage> {
   int _currentIndex = 0;
   TabKey _tab = TabKey.list;
   bool _saving = false;
+  bool _practiceFinished = false;
+  bool _shuffleQuestions = false;
+  bool _autoAdvanceEnabled = true;
   late String _accessToken;
   final GlobalKey _questionCardKey = GlobalKey();
 
@@ -33,8 +39,18 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   Future<List<MistakeQuestion>> _loadMistakes() async {
+    final settings = await QuestionPageSettingsStore.load();
+    if (!mounted) return const <MistakeQuestion>[];
+    _shuffleQuestions = settings.shuffleQuestions;
+    _autoAdvanceEnabled = settings.autoAdvance;
+
     try {
-      return await ApiClient.mistakes(_accessToken);
+      final questions = await ApiClient.mistakes(_accessToken);
+      final result = List<MistakeQuestion>.from(questions);
+      if (_shuffleQuestions) {
+        result.shuffle();
+      }
+      return result;
     } on ApiException catch (error) {
       final refreshToken = widget.session.refreshToken;
       if (error.statusCode != 401 ||
@@ -45,12 +61,14 @@ class _MistakesPageState extends State<MistakesPage> {
 
       final refreshed = await ApiClient.refresh(refreshToken);
       if (!mounted) return const <MistakeQuestion>[];
+      final active = refreshed.copyWith(user: widget.session.user);
 
       setState(() {
-        _accessToken = refreshed.accessToken;
+        _accessToken = active.accessToken;
       });
+      widget.onSessionUpdated?.call(active);
 
-      return ApiClient.mistakes(refreshed.accessToken);
+      return ApiClient.mistakes(active.accessToken);
     }
   }
 
@@ -83,7 +101,24 @@ class _MistakesPageState extends State<MistakesPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(onBack: () => Navigator.of(context).pop()),
+                  _Header(
+                    onBack: () => Navigator.of(context).pop(),
+                    onSettings: () => showQuestionPageSettingsSheet(
+                      context: context,
+                      shuffleQuestions: _shuffleQuestions,
+                      autoAdvance: _autoAdvanceEnabled,
+                      onShuffleChanged: (value) {
+                        setState(() {
+                          _shuffleQuestions = value;
+                        });
+                      },
+                      onAutoAdvanceChanged: (value) {
+                        setState(() {
+                          _autoAdvanceEnabled = value;
+                        });
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   _Tabs(
                     tab: _tab,
@@ -162,7 +197,9 @@ class _MistakesPageState extends State<MistakesPage> {
     final answered = selected != null;
 
     return QuestionSwipeDetector(
-      onSwipeLeft: _currentIndex < questions.length - 1
+      onSwipeLeft: _practiceFinished
+          ? () => _showLockedRestartModal()
+          : _currentIndex < questions.length - 1
           ? () {
               setState(() {
                 _currentIndex += 1;
@@ -170,7 +207,9 @@ class _MistakesPageState extends State<MistakesPage> {
               _scrollCurrentQuestionIntoView();
             }
           : null,
-      onSwipeRight: _currentIndex > 0
+      onSwipeRight: _practiceFinished
+          ? () => _showLockedRestartModal()
+          : _currentIndex > 0
           ? () {
               setState(() {
                 _currentIndex -= 1;
@@ -188,6 +227,10 @@ class _MistakesPageState extends State<MistakesPage> {
             answeredStates: _answers,
             correctAnswers: questions.map((q) => q.correctIndex).toList(),
             onTap: (index) {
+              if (_practiceFinished) {
+                _showLockedRestartModal();
+                return;
+              }
               setState(() {
                 _currentIndex = index;
               });
@@ -205,10 +248,15 @@ class _MistakesPageState extends State<MistakesPage> {
                     question: currentQuestion,
                     selectedIndex: selected,
                     onSelect: (index) {
+                      if (_practiceFinished) {
+                        _showLockedRestartModal();
+                        return;
+                      }
                       setState(() {
                         if (_answers[currentQuestion.id] == null) {
                           _answers[currentQuestion.id] = index;
-                          if (_currentIndex < questions.length - 1) {
+                          if (_autoAdvanceEnabled &&
+                              _currentIndex < questions.length - 1) {
                             _currentIndex += 1;
                           }
                         }
@@ -225,23 +273,40 @@ class _MistakesPageState extends State<MistakesPage> {
             ),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: FilledButton.tonal(
-              onPressed: _saving ? null : () => _openFinishSheet(questions),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFBCD2FF),
-                foregroundColor: const Color(0xFF0A4DB5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(_saving ? 'Saqlanmoqda...' : 'Yakunlash'),
-            ),
+          QuestionExplanationFooter(
+            questionText: currentQuestion.text,
+            correctAnswer: currentQuestion.correctAnswer,
+            explanation: currentQuestion.explanation,
+            audioUrl: currentQuestion.audio,
+            onFinish: _saving
+                ? null
+                : _practiceFinished
+                ? () => _showLockedRestartModal()
+                : () => _openFinishSheet(questions),
+            onRestart: _restartPractice,
+            finishLabel: _saving ? 'Saqlanmoqda...' : 'Yakunlash',
           ),
         ],
       ),
+    );
+  }
+
+  void _restartPractice() {
+    setState(() {
+      _answers.clear();
+      _currentIndex = 0;
+      _practiceFinished = false;
+    });
+    _scrollCurrentQuestionIntoView();
+  }
+
+  Future<void> _showLockedRestartModal() {
+    return showTestLockedRestartSheet(
+      context: context,
+      title: 'Test tugadi',
+      message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
+      onRestart: () async => _restartPractice(),
+      restartLabel: 'Qayta boshlash',
     );
   }
 
@@ -259,6 +324,9 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   Future<void> _openFinishSheet(List<MistakeQuestion> questions) async {
+    if (mounted) {
+      setState(() => _practiceFinished = true);
+    }
     final correct = questions
         .where(
           (question) =>
@@ -383,9 +451,10 @@ class _MistakesPageState extends State<MistakesPage> {
 enum TabKey { list, practice }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
+  const _Header({required this.onBack, required this.onSettings});
 
   final VoidCallback onBack;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -405,12 +474,30 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Text(
-          'Mening xatolarim',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text,
+        const Expanded(
+          child: Text(
+            'Mening xatolarim',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Material(
+          color: Colors.white,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onSettings,
+            customBorder: const CircleBorder(),
+            child: const SizedBox(
+              width: 46,
+              height: 46,
+              child: Icon(Icons.settings_outlined, size: 22),
+            ),
           ),
         ),
       ],

@@ -12,6 +12,7 @@ class ExamQuestion {
     required this.explanation,
     required this.image,
     required this.hasImage,
+    required this.audio,
   });
 
   final String id;
@@ -26,6 +27,7 @@ class ExamQuestion {
   final String explanation;
   final String image;
   final bool hasImage;
+  final String audio;
 
   factory ExamQuestion.fromJson(Map<String, dynamic> json) {
     final rawOptions = json['options'];
@@ -44,6 +46,7 @@ class ExamQuestion {
       explanation: (json['explanation'] ?? '').toString(),
       image: (json['image'] ?? '').toString(),
       hasImage: json['hasImage'] == true,
+      audio: (json['audio'] ?? '').toString(),
     );
   }
 }

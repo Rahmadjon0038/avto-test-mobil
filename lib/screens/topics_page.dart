@@ -183,86 +183,90 @@ class _TopicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Material(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: marked ? const Color(0xFFEAF7EF) : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: marked
-                  ? const Color(0xFFB7E6C8)
-                  : AppColors.border.withValues(alpha: 0.75),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: marked ? const Color(0xFFEAF7EF) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: marked
+                    ? const Color(0xFFB7E6C8)
+                    : AppColors.border.withValues(alpha: 0.75),
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x08000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: marked
-                      ? const Color(0xFFE8FBF2)
-                      : const Color(0xFFEAF1FF),
-                  borderRadius: BorderRadius.circular(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: marked
+                        ? const Color(0xFFE8FBF2)
+                        : const Color(0xFFEAF1FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    marked
+                        ? Icons.check_circle_rounded
+                        : Icons.description_rounded,
+                    color: marked
+                        ? const Color(0xFF20B26B)
+                        : const Color(0xFF4C8DFF),
+                    size: 24,
+                  ),
                 ),
-                child: Icon(
-                  marked
-                      ? Icons.check_circle_rounded
-                      : Icons.description_rounded,
-                  color: marked
-                      ? const Color(0xFF20B26B)
-                      : const Color(0xFF4C8DFF),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      topic.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.text,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        topic.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: onMarkToggle,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  marked
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  color: marked
-                      ? const Color(0xFF20B26B)
-                      : const Color(0xFFB5B8C0),
-                  size: 24,
+                IconButton(
+                  onPressed: onMarkToggle,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    marked
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: marked
+                        ? const Color(0xFF20B26B)
+                        : const Color(0xFFB5B8C0),
+                    size: 24,
+                  ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFFB5B8C0),
-                size: 20,
-              ),
-            ],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFB5B8C0),
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
       ),
