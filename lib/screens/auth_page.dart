@@ -86,10 +86,12 @@ class _AuthPageState extends State<AuthPage> {
     } catch (e) {
       if (!mounted) return;
       final message = e.toString().replaceFirst('Exception: ', '');
-      if (_mode == AuthMode.register && message.toLowerCase().contains('allaqachon')) {
+      if (_mode == AuthMode.register &&
+          message.toLowerCase().contains('allaqachon')) {
         setState(() {
           _mode = AuthMode.login;
-          _error = 'Bu raqam allaqachon ro‘yxatdan o‘tgan, iltimos tizimga kiring';
+          _error =
+              'Bu raqam allaqachon ro‘yxatdan o‘tgan, iltimos tizimga kiring';
         });
       } else {
         setState(() => _error = message);
@@ -153,15 +155,14 @@ class _AuthPageState extends State<AuthPage> {
         phone: '+998$phoneDigits',
       );
       if (!mounted) return null;
-      final tempPassword =
-          response.temporaryPassword?.trim().isNotEmpty == true
-              ? response.temporaryPassword!.trim()
-              : null;
+      final tempPassword = response.temporaryPassword?.trim().isNotEmpty == true
+          ? response.temporaryPassword!.trim()
+          : null;
       final message = tempPassword != null
           ? 'Bir martalik parol: $tempPassword'
           : response.message.isNotEmpty
-              ? response.message
-              : 'Bir martalik parol yaratildi';
+          ? response.message
+          : 'Bir martalik parol yaratildi';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
@@ -215,7 +216,9 @@ class _AuthPageState extends State<AuthPage> {
                                 ClipboardData(text: tempPassword),
                               );
                               if (dialogContext.mounted) {
-                                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                ScaffoldMessenger.of(
+                                  dialogContext,
+                                ).showSnackBar(
                                   const SnackBar(
                                     content: Text('Parol nusxalandi'),
                                   ),
@@ -351,7 +354,7 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
 
-      return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
         color: Colors.white,
@@ -452,6 +455,17 @@ class _AuthPageState extends State<AuthPage> {
                               },
                             ),
                             const SizedBox(height: 14),
+                            if (!isLogin) ...[
+                              const Text(
+                                'Uzingiz uchun maxsus parol yarating',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
                             _RoundedField(
                               controller: _passwordController,
                               label: 'Parol',

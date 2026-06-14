@@ -1,6 +1,8 @@
+import 'dart:async';
+
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
@@ -8,6 +10,12 @@ import '../models/topic_summary.dart';
 import '../models/video_lesson.dart';
 import '../services/api_client.dart';
 import 'topic_test_page.dart';
+
+const Map<String, String> _videoRequestHeaders = <String, String>{
+  'Referer': 'https://road-test.uz/',
+  'Origin': 'https://road-test.uz',
+  'User-Agent': 'RoadTest/1.0 (Flutter)'
+};
 
 class VideosPage extends StatefulWidget {
   const VideosPage({super.key, required this.session});
@@ -20,6 +28,10 @@ class VideosPage extends StatefulWidget {
 
 class _VideosPageState extends State<VideosPage> {
   late Future<List<VideoLesson>> _videosFuture;
+  VideoLesson? _activeVideo;
+  String _playbackUrl = "";
+  bool _loadingPlayback = false;
+  String _playbackError = "";
 
   @override
   void initState() {
@@ -27,22 +39,58 @@ class _VideosPageState extends State<VideosPage> {
     _videosFuture = ApiClient.videos(widget.session.accessToken);
   }
 
-  String _buildWatchUrl(String youtubeId) {
-    return 'https://www.youtube.com/watch?v=$youtubeId&rel=0&playsinline=1';
-  }
-
-  Future<void> _openVideo(VideoLesson video) async {
-    if (!mounted) return;
-    await Navigator.of(context).push(
+  void _openTopic(VideoLesson video) {
+    Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _VideoPlayerPage(
+        builder: (_) => TopicTestPage(
           session: widget.session,
-          topicId: video.topicId.toString(),
-          title: video.topicTitle,
-          watchUrl: _buildWatchUrl(video.youtubeId),
+          topic: TopicSummary(
+            id: video.topicId,
+            title: video.topicTitle,
+            completed: false,
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _openVideo(VideoLesson video) async {
+    setState(() {
+      _activeVideo = video;
+      _playbackUrl = "";
+      _playbackError = "";
+      _loadingPlayback = true;
+    });
+
+    try {
+      final url = await ApiClient.videoPlaybackUrl(
+        accessToken: widget.session.accessToken,
+        videoId: video.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _playbackUrl = url;
+        _loadingPlayback = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _playbackError = error.message;
+        _loadingPlayback = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _playbackError = error.toString();
+        _loadingPlayback = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 
   @override
@@ -84,28 +132,20 @@ class _VideosPageState extends State<VideosPage> {
 
                     return ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: videos.length,
-                      separatorBuilder: (context, index) =>
+                    itemCount: videos.length,
+                    separatorBuilder: (context, index) =>
                           const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final video = videos[index];
+                        final active = _activeVideo?.id == video.id;
                         return _VideoCard(
                           video: video,
+                          isActive: active,
+                          playbackUrl: active ? _playbackUrl : "",
+                          loadingPlayback: active ? _loadingPlayback : false,
+                          playbackError: active ? _playbackError : "",
                           onOpenVideo: () => _openVideo(video),
-                          onOpenTopic: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TopicTestPage(
-                                  session: widget.session,
-                                  topic: TopicSummary(
-                                    id: video.topicId,
-                                    title: video.topicTitle,
-                                    completed: false,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                          onOpenTopic: () => _openTopic(video),
                         );
                       },
                     );
@@ -158,336 +198,292 @@ class _VideosHeader extends StatelessWidget {
   }
 }
 
-class _VideoCard extends StatelessWidget {
+class _VideoCard extends StatefulWidget {
   const _VideoCard({
     required this.video,
+    required this.isActive,
+    required this.playbackUrl,
+    required this.loadingPlayback,
+    required this.playbackError,
     required this.onOpenVideo,
     required this.onOpenTopic,
   });
 
   final VideoLesson video;
+  final bool isActive;
+  final String playbackUrl;
+  final bool loadingPlayback;
+  final String playbackError;
   final VoidCallback onOpenVideo;
   final VoidCallback onOpenTopic;
 
   @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onOpenVideo,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (video.thumbnailUrl.isNotEmpty)
-                        Image.network(
-                          video.thumbnailUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFFEAF1FF),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.play_circle_fill_rounded,
-                                color: Color(0xFF4C8DFF),
-                                size: 64,
-                              ),
-                            );
-                          },
-                        )
-                      else
-                        Container(
-                          color: const Color(0xFFEAF1FF),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.play_circle_fill_rounded,
-                            color: Color(0xFF4C8DFF),
-                            size: 64,
-                          ),
-                        ),
-                      Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x11000000), Color(0x55000000)],
-                          ),
-                        ),
-                      ),
-                      const Center(
-                        child: CircleAvatar(
-                          radius: 26,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.play_arrow_rounded,
-                            color: Color(0xFF4C8DFF),
-                            size: 28,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: onOpenTopic,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          video.topicTitle,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.text,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: onOpenTopic,
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: const Color(0xFF0B74FF),
-                  ),
-                  child: const Text(
-                    'Mavzuga doir testlarni ishlash',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+  State<_VideoCard> createState() => _VideoCardState();
+}
+
+class _VideoCardState extends State<_VideoCard> {
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
+  bool _initializing = false;
+  bool _ready = false;
+  bool _error = false;
+
+  @override
+  void didUpdateWidget(covariant _VideoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive && oldWidget.isActive) {
+      _disposePlayer();
+    }
+  }
+
+  Future<void> _ensurePlayer() async {
+    if (_chewieController != null ||
+        _initializing ||
+        widget.playbackUrl.isEmpty) {
+      return;
+    }
+    _initializing = true;
+    _error = false;
+
+    try {
+      final videoController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.playbackUrl),
+        formatHint: VideoFormat.hls,
+        httpHeaders: _videoRequestHeaders,
+      );
+      await videoController.initialize().timeout(const Duration(seconds: 20));
+      final chewieController = ChewieController(
+        videoPlayerController: videoController,
+        autoPlay: true,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        allowPlaybackSpeedChanging: true,
+        showControlsOnInitialize: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primary,
+          bufferedColor: AppColors.primaryPressed,
+          backgroundColor: AppColors.border,
+          handleColor: AppColors.primary,
         ),
-      ),
-    );
-  }
-}
-
-class _VideoPlayerPage extends StatefulWidget {
-  const _VideoPlayerPage({
-    required this.session,
-    required this.topicId,
-    required this.title,
-    required this.watchUrl,
-  });
-
-  final AuthSession session;
-  final String topicId;
-  final String title;
-  final String watchUrl;
-
-  @override
-  State<_VideoPlayerPage> createState() => _VideoPlayerPageState();
-}
-
-class _VideoPlayerPageState extends State<_VideoPlayerPage> {
-  late final WebViewController _controller;
-  bool _fullscreen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(widget.watchUrl));
+      );
+      if (!mounted) {
+        chewieController.dispose();
+        await videoController.dispose();
+        return;
+      }
+      setState(() {
+        _videoPlayerController = videoController;
+        _chewieController = chewieController;
+        _ready = true;
+        _initializing = false;
+      });
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _initializing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _initializing = false;
+      });
+    }
   }
 
-  Future<void> _setFullscreen(bool value) async {
-    if (!mounted) return;
-    setState(() => _fullscreen = value);
-    await SystemChrome.setEnabledSystemUIMode(
-      value ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
-    );
+  void _disposePlayer() {
+    _chewieController?.dispose();
+    _videoPlayerController?.dispose();
+    _chewieController = null;
+    _videoPlayerController = null;
+    _initializing = false;
+    _ready = false;
+    _error = false;
   }
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _disposePlayer();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final player = ClipRRect(
-      borderRadius: BorderRadius.circular(_fullscreen ? 0 : 18),
-      child: WebViewWidget(controller: _controller),
-    );
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        top: !_fullscreen,
-        bottom: !_fullscreen,
-        child: Stack(
+    return InkWell(
+      onTap: widget.onOpenVideo,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.all(_fullscreen ? 0 : 16),
-                child: Column(
-                  children: [
-                    if (!_fullscreen)
-                      Row(
-                        children: [
-                          Material(
-                            color: Colors.white,
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              onTap: () {
-                                if (_fullscreen) {
-                                  _setFullscreen(false);
-                                } else {
-                                  Navigator.of(context).pop();
-                                }
-                              },
-                              customBorder: const CircleBorder(),
-                              child: const SizedBox(
-                                width: 46,
-                                height: 46,
-                                child: Icon(Icons.arrow_back_rounded),
+            ClipRect(
+              child: Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 10.2,
+                    child: widget.isActive
+                        ? _buildPlayer()
+                        : Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (widget.video.videoThumbnail.isNotEmpty)
+                                Image.network(
+                                  widget.video.videoThumbnail,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xFFEAF1FF),
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.play_circle_fill_rounded,
+                                        color: Color(0xFF4C8DFF),
+                                        size: 64,
+                                      ),
+                                    );
+                                  },
+                                )
+                              else
+                                Container(
+                                  color: const Color(0xFFEAF1FF),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.play_circle_fill_rounded,
+                                    color: Color(0xFF4C8DFF),
+                                    size: 64,
+                                  ),
+                                ),
+                              Container(
+                                color: Colors.black.withValues(alpha: 0.12),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(
-                              widget.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _setFullscreen(!_fullscreen),
-                            icon: Icon(
-                              _fullscreen
-                                  ? Icons.fullscreen_exit_rounded
-                                  : Icons.fullscreen_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (!_fullscreen) const SizedBox(height: 14),
-                    Expanded(
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: player,
-                        ),
-                      ),
-                    ),
-                    if (!_fullscreen) ...[
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TopicTestPage(
-                                  session: widget.session,
-                                  topic: TopicSummary(
-                                    id: widget.topicId,
-                                    title: widget.title,
-                                    completed: false,
+                              const Center(
+                                child: CircleAvatar(
+                                  radius: 29,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Color(0xFF4C8DFF),
+                                    size: 30,
                                   ),
                                 ),
                               ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            foregroundColor: const Color(0xFF6EA0FF),
+                            ],
                           ),
-                          child: const Text(
-                            'Mavzuga doir testlarni ishlash',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              child: InkWell(
+                onTap: widget.onOpenTopic,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.video.title.isNotEmpty
+                            ? widget.video.title
+                            : widget.video.topicTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16.8,
+                          height: 1.24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textMuted,
+                      size: 28,
+                    ),
                   ],
                 ),
               ),
             ),
-            if (_fullscreen)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: SafeArea(
-                  child: Material(
-                    color: Colors.black54,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      onTap: () => _setFullscreen(false),
-                      customBorder: const CircleBorder(),
-                      child: const SizedBox(
-                        width: 42,
-                        height: 42,
-                        child: Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPlayer() {
+    if (widget.playbackError.isNotEmpty) {
+      return Container(
+        color: const Color(0xFF0B1220),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Video ochilmadi',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.playbackError,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (widget.loadingPlayback || widget.playbackUrl.isEmpty) {
+      return Container(
+        color: const Color(0xFF0B1220),
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      );
+    }
+
+    if (_chewieController == null || !_ready) {
+      final future = _ensurePlayer();
+      return FutureBuilder<void>(
+        future: future,
+        builder: (context, snapshot) {
+          if (_error) {
+            return Container(
+              color: const Color(0xFF0B1220),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(16),
+              child: const Text(
+                'Video ochilmadi',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+          if (_chewieController == null || !_ready) {
+            return Container(
+              color: const Color(0xFF0B1220),
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+            );
+          }
+          return Chewie(controller: _chewieController!);
+        },
+      );
+    }
+
+    return Chewie(controller: _chewieController!);
   }
 }
 

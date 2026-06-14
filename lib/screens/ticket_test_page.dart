@@ -185,6 +185,12 @@ class _TicketTestPageState extends State<TicketTestPage> {
                             onShuffleChanged: (value) {
                               setState(() {
                                 _shuffleQuestions = value;
+                                _currentIndex = 0;
+                                _selectedIndex = null;
+                                _answers.clear();
+                                _resultShown = false;
+                                _loadedQuestions = null;
+                                _questionsFuture = _loadQuestions();
                               });
                             },
                             onAutoAdvanceChanged: (value) {

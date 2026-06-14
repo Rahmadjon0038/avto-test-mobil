@@ -11,11 +11,7 @@ import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class ExamPage extends StatefulWidget {
-  const ExamPage({
-    super.key,
-    required this.session,
-    this.onSessionUpdated,
-  });
+  const ExamPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
   final ValueChanged<AuthSession>? onSessionUpdated;
@@ -83,8 +79,11 @@ class _ExamPageState extends State<ExamPage> {
     });
 
     try {
-      Map<String, dynamic>? exam = await ApiClient.exam(_accessToken);
-      exam ??= await ApiClient.startExam(accessToken: _accessToken, count: 20);
+      await ApiClient.examReset(_accessToken);
+      final exam = await ApiClient.startExam(
+        accessToken: _accessToken,
+        count: 20,
+      );
       if (!mounted) return;
       _applyExam(exam);
     } on ApiException catch (error) {
@@ -615,8 +614,12 @@ class _ExamPageState extends State<ExamPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: locked ? () => _showLockedRestartModal() : _goToNextQuestion,
-          onSwipeRight: locked ? () => _showLockedRestartModal() : _goToPreviousQuestion,
+          onSwipeLeft: locked
+              ? () => _showLockedRestartModal()
+              : _goToNextQuestion,
+          onSwipeRight: locked
+              ? () => _showLockedRestartModal()
+              : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: _isLoading
@@ -792,17 +795,18 @@ class _ExamPageState extends State<ExamPage> {
                                                     alpha: 0.85,
                                                   );
 
-                                          return Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
+                                            return Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
                                                 onTap: locked
-                                                    ? () => _showLockedRestartModal()
+                                                    ? () =>
+                                                          _showLockedRestartModal()
                                                     : () {
-                                                  setState(() {
-                                                    _currentIndex = index;
-                                                  });
-                                                  _scrollCurrentQuestionIntoView();
-                                                },
+                                                        setState(() {
+                                                          _currentIndex = index;
+                                                        });
+                                                        _scrollCurrentQuestionIntoView();
+                                                      },
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 child: Container(
@@ -937,7 +941,8 @@ class _ExamPageState extends State<ExamPage> {
                                             ),
                                             child: InkWell(
                                               onTap: locked
-                                                  ? () => _showLockedRestartModal()
+                                                  ? () =>
+                                                        _showLockedRestartModal()
                                                   : _submitting
                                                   ? null
                                                   : () => _saveAnswer(
@@ -1050,7 +1055,10 @@ class _ExamPageState extends State<ExamPage> {
                             correctAnswer: currentQuestion.correctAnswer,
                             explanation: currentQuestion.explanation,
                             audioUrl: currentQuestion.audio,
-                            onFinish: locked ? () => _showLockedRestartModal() : _finishExam,
+                            showExplanationActions: false,
+                            onFinish: locked
+                                ? () => _showLockedRestartModal()
+                                : _finishExam,
                             onRestart: _restartExam,
                           );
                         },

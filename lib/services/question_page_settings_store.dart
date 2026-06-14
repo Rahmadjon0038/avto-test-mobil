@@ -44,6 +44,7 @@ Future<void> showQuestionPageSettingsSheet({
   required bool autoAdvance,
   required ValueChanged<bool> onShuffleChanged,
   required ValueChanged<bool> onAutoAdvanceChanged,
+  bool showShuffleQuestions = true,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -113,34 +114,36 @@ Future<void> showQuestionPageSettingsSheet({
                     ),
                     child: Column(
                       children: [
-                        SwitchListTile.adaptive(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 4,
-                          ),
-                          title: const Text(
-                            'Testlarni aralashtirish',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.text,
+                        if (showShuffleQuestions) ...[
+                          SwitchListTile.adaptive(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 4,
                             ),
-                          ),
-                          subtitle: const Text(
-                            'Har safar savollar tartibi aralashadi.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppColors.textMuted,
+                            title: const Text(
+                              'Testlarni aralashtirish',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
                             ),
+                            subtitle: const Text(
+                              'Har safar savollar tartibi aralashadi.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            value: shuffleEnabled,
+                            onChanged: (value) => updateShuffle(value),
                           ),
-                          value: shuffleEnabled,
-                          onChanged: (value) => updateShuffle(value),
-                        ),
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppColors.border.withValues(alpha: 0.55),
-                        ),
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.border.withValues(alpha: 0.55),
+                          ),
+                        ],
                         SwitchListTile.adaptive(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,

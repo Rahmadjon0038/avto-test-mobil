@@ -320,14 +320,13 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _openProfileSheet(BuildContext context) {
-    final fullName = session.userName;
     final phoneCandidates = <String?>[
       session.user['phone']?.toString(),
       session.user['phoneNumber']?.toString(),
       session.user['mobile']?.toString(),
       session.user['tel']?.toString(),
     ];
-    String? phone;
+    String phone = '';
     for (final candidate in phoneCandidates) {
       final value = candidate?.trim();
       if (value != null && value.isNotEmpty) {
@@ -541,9 +540,9 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  fullName.isNotEmpty
-                                      ? fullName
-                                      : 'Foydalanuvchi',
+                                  phone.isNotEmpty
+                                      ? phone
+                                      : 'Telefon raqam topilmadi',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textMuted,
@@ -555,23 +554,18 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      _ProfileInfoRow(
-                        label: 'Ism',
-                        value: fullName.isNotEmpty ? fullName : 'Belgilanmagan',
-                      ),
-                      const SizedBox(height: 10),
-                      _ProfileInfoRow(
-                        label: 'Telefon',
-                        value: phone?.isNotEmpty == true
-                            ? phone!
-                            : 'Belgilanmagan',
-                      ),
-                      const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
-                        child: OutlinedButton.icon(
+                        child: FilledButton.icon(
                           onPressed: onChangePassword,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
                           icon: const Icon(Icons.lock_reset_rounded),
                           label: const Text('Parolni almashtirish'),
                         ),
@@ -582,8 +576,15 @@ class HomeScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           height: 50,
-                          child: OutlinedButton.icon(
+                          child: FilledButton.icon(
                             onPressed: googleLoading ? null : linkGoogle,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F766E),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
                             icon: googleLoading
                                 ? const SizedBox(
                                     width: 18,
@@ -601,14 +602,14 @@ class HomeScreen extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         height: 50,
-                        child: FilledButton.tonal(
+                        child: FilledButton(
                           onPressed: () {
                             Navigator.of(sheetContext).pop();
                             onLogout();
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFEDEE),
-                            foregroundColor: AppColors.danger,
+                            backgroundColor: const Color(0xFF1E40AF),
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
@@ -620,17 +621,16 @@ class HomeScreen extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         height: 50,
-                        child: OutlinedButton.icon(
+                        child: FilledButton(
                           onPressed: googleLoading ? null : deleteAccount,
-                          icon: const Icon(Icons.delete_forever_rounded),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.danger,
-                            side: const BorderSide(color: Color(0xFFEF9A9A)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFB91C1C),
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          label: const Text('Delete account'),
+                          child: const Text('Delete account'),
                         ),
                       ),
                     ],
@@ -641,49 +641,6 @@ class HomeScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _ProfileInfoRow extends StatelessWidget {
-  const _ProfileInfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSoft,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

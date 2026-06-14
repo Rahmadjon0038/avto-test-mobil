@@ -6,6 +6,7 @@ import '../models/auth_session.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../services/api_client.dart';
+import '../services/question_page_settings_store.dart';
 import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
@@ -25,6 +26,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _resultShown = false;
+  bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _questionCardKey = GlobalKey();
@@ -36,6 +38,15 @@ class _TopicTestPageState extends State<TopicTestPage> {
       accessToken: widget.session.accessToken,
       topicId: widget.topic.id,
     );
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await QuestionPageSettingsStore.load();
+    if (!mounted) return;
+    setState(() {
+      _autoAdvanceEnabled = settings.autoAdvance;
+    });
   }
 
   @override
@@ -44,8 +55,12 @@ class _TopicTestPageState extends State<TopicTestPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: QuestionSwipeDetector(
-          onSwipeLeft: _resultShown ? () => _showLockedRestartModal() : _goToNextQuestion,
-          onSwipeRight: _resultShown ? () => _showLockedRestartModal() : _goToPreviousQuestion,
+          onSwipeLeft: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToNextQuestion,
+          onSwipeRight: _resultShown
+              ? () => _showLockedRestartModal()
+              : _goToPreviousQuestion,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: FutureBuilder<List<TopicQuestion>>(
@@ -124,6 +139,22 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _SettingsButton(
+                          onTap: () => showQuestionPageSettingsSheet(
+                            context: context,
+                            shuffleQuestions: false,
+                            autoAdvance: _autoAdvanceEnabled,
+                            showShuffleQuestions: false,
+                            onShuffleChanged: (_) {},
+                            onAutoAdvanceChanged: (value) {
+                              setState(() {
+                                _autoAdvanceEnabled = value;
+                              });
+                              QuestionPageSettingsStore.setAutoAdvance(value);
+                            },
                           ),
                         ),
                       ],
@@ -240,7 +271,8 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                               _selectedIndex = index;
                                               _saveAnswer(_currentIndex, index);
                                             });
-                                            if (!isLast) {
+                                            if (!isLast &&
+                                                _autoAdvanceEnabled) {
                                               _advanceToNextQuestion();
                                             }
                                           }
@@ -316,15 +348,18 @@ class _TopicTestPageState extends State<TopicTestPage> {
                     const SizedBox(height: 8),
                     QuestionExplanationFooter(
                       questionText: question.text,
-                      correctAnswer: question.correctIndex >= 0 &&
+                      correctAnswer:
+                          question.correctIndex >= 0 &&
                               question.correctIndex < question.options.length
                           ? question.options[question.correctIndex]
                           : question.options.isNotEmpty
-                              ? question.options.first
-                              : '',
+                          ? question.options.first
+                          : '',
                       explanation: question.explanation,
                       audioUrl: question.audio,
-                      onFinish: locked ? () => _showLockedRestartModal() : () => _finishNow(questions),
+                      onFinish: locked
+                          ? () => _showLockedRestartModal()
+                          : () => _finishNow(questions),
                       onRestart: _restartTest,
                     ),
                   ],
@@ -624,6 +659,33 @@ class _TopicTestPageState extends State<TopicTestPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
+          ),
+          child: const Icon(Icons.settings_outlined, size: 22),
+        ),
+      ),
     );
   }
 }

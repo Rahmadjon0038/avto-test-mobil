@@ -564,7 +564,19 @@ class _MarathonPageState extends State<MarathonPage> {
                               onShuffleChanged: (value) {
                                 setState(() {
                                   _shuffleQuestions = value;
+                                  _advanceTimer?.cancel();
+                                  _advanceTimer = null;
+                                  _isLoading = true;
+                                  _resultShown = false;
+                                  _answers.clear();
+                                  _bank.clear();
+                                  _visibleQuestions.clear();
+                                  _currentIndex = 0;
+                                  _nextBankIndex = 3;
+                                  _hasMoreBank = true;
+                                  _sessionExpired = false;
                                 });
+                                unawaited(_loadInitial());
                               },
                               onAutoAdvanceChanged: (value) {
                                 setState(() {

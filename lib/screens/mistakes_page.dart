@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
@@ -30,6 +32,7 @@ class _MistakesPageState extends State<MistakesPage> {
   bool _autoAdvanceEnabled = true;
   late String _accessToken;
   final GlobalKey _questionCardKey = GlobalKey();
+  Timer? _practiceAdvanceTimer;
 
   @override
   void initState() {
@@ -73,6 +76,12 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   @override
+  void dispose() {
+    _practiceAdvanceTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -110,6 +119,11 @@ class _MistakesPageState extends State<MistakesPage> {
                       onShuffleChanged: (value) {
                         setState(() {
                           _shuffleQuestions = value;
+                          _currentIndex = 0;
+                          _answers.clear();
+                          _practiceFinished = false;
+                          _tab = TabKey.list;
+                          _mistakesFuture = _loadMistakes();
                         });
                       },
                       onAutoAdvanceChanged: (value) {
@@ -257,7 +271,17 @@ class _MistakesPageState extends State<MistakesPage> {
                           _answers[currentQuestion.id] = index;
                           if (_autoAdvanceEnabled &&
                               _currentIndex < questions.length - 1) {
-                            _currentIndex += 1;
+                            _practiceAdvanceTimer?.cancel();
+                            _practiceAdvanceTimer = Timer(
+                              const Duration(milliseconds: 1600),
+                              () {
+                                if (!mounted || _practiceFinished) return;
+                                setState(() {
+                                  _currentIndex += 1;
+                                });
+                                _scrollCurrentQuestionIntoView();
+                              },
+                            );
                           }
                         }
                       });
@@ -292,6 +316,7 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   void _restartPractice() {
+    _practiceAdvanceTimer?.cancel();
     setState(() {
       _answers.clear();
       _currentIndex = 0;
@@ -410,6 +435,7 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   Future<void> _syncMistakes(List<MistakeQuestion> questions) async {
+    _practiceAdvanceTimer?.cancel();
     setState(() => _saving = true);
     try {
       final payload = <String, int>{};
@@ -640,7 +666,7 @@ class _MistakeCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -659,17 +685,17 @@ class _MistakeCard extends StatelessWidget {
             Text(
               _title(index, question),
               style: const TextStyle(
-                fontSize: 13.5,
+                fontSize: 13.8,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               question.text,
               style: const TextStyle(
-                fontSize: 12.6,
-                height: 1.22,
+                fontSize: 14.6,
+                height: 1.34,
                 fontWeight: FontWeight.w600,
                 color: AppColors.text,
               ),
@@ -689,13 +715,43 @@ class _MistakeCard extends StatelessWidget {
               interactive: false,
             ),
             if (question.explanation.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 question.explanation,
                 style: const TextStyle(
-                  fontSize: 11.2,
-                  height: 1.28,
+                  fontSize: 13.6,
+                  height: 1.44,
                   color: AppColors.textMuted,
+                ),
+              ),
+            ],
+            if (question.audio.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    showQuestionAudioExplanationSheet(
+                      context: context,
+                      audioUrl: question.audio,
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.volume_up_rounded, size: 18),
+                  label: const Text(
+                    'Audio izoh',
+                    style: TextStyle(
+                      fontSize: 12.4,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -876,8 +932,8 @@ class _CompactOptionListItem extends StatelessWidget {
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13.2,
-                    height: 1.22,
+                    fontSize: 12.4,
+                    height: 1.24,
                     fontWeight: FontWeight.w700,
                     color: textColor,
                   ),
@@ -1046,8 +1102,8 @@ class _QuestionCard extends StatelessWidget {
           Text(
             question.text,
             style: const TextStyle(
-              fontSize: 15.6,
-              height: 1.28,
+              fontSize: 17,
+              height: 1.34,
               fontWeight: FontWeight.w800,
               color: AppColors.text,
             ),
@@ -1082,7 +1138,7 @@ class _ExplanationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F8FB),
         borderRadius: BorderRadius.circular(18),
@@ -1091,8 +1147,8 @@ class _ExplanationCard extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 13.6,
-          height: 1.42,
+          fontSize: 14.6,
+          height: 1.48,
           color: AppColors.textMuted,
         ),
       ),

@@ -274,7 +274,7 @@ class ApiClient {
 
   static Future<List<VideoLesson>> videos(String accessToken) async {
     final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/videos'),
+      Uri.parse('$apiBaseUrl/api/video-lessons'),
       headers: _jsonHeaders(accessToken: accessToken),
     );
     final body = _decodeBody(response);
@@ -290,6 +290,28 @@ class ApiClient {
         .whereType<Map>()
         .map((video) => VideoLesson.fromJson(Map<String, dynamic>.from(video)))
         .toList();
+  }
+
+  static Future<String> videoPlaybackUrl({
+    required String accessToken,
+    required String videoId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/api/video-lessons/$videoId/playback'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Playback yuklanmadi',
+      );
+    }
+    final playbackUrl = body['playbackUrl']?.toString();
+    if (playbackUrl == null || playbackUrl.isEmpty) {
+      throw ApiException(500, 'Playback URL topilmadi');
+    }
+    return playbackUrl;
   }
 
   static Future<Map<String, dynamic>?> exam(String accessToken) async {

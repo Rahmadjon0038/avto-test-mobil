@@ -21,11 +21,26 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                'assets/logo.png',
-                width: 132,
-                height: 132,
-                fit: BoxFit.contain,
+              Container(
+                width: 148,
+                height: 148,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(34),
+                  border: Border.all(
+                    color: const Color(0xFFE5E7EB),
+                    width: 1.2,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
               ),
               const SizedBox(height: 16),
               const Text(
