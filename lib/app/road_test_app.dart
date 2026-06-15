@@ -77,17 +77,21 @@ class _RoadTestAppState extends State<RoadTestApp> {
 
       if (!mounted) return;
       setState(() {
-        _session = active ?? AuthSession.fromJson(
-          jsonDecode(rawSession) as Map<String, dynamic>,
-        );
+        _session =
+            active ??
+            AuthSession.fromJson(
+              jsonDecode(rawSession) as Map<String, dynamic>,
+            );
         _loading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _session = active ?? AuthSession.fromJson(
-          jsonDecode(rawSession) as Map<String, dynamic>,
-        );
+        _session =
+            active ??
+            AuthSession.fromJson(
+              jsonDecode(rawSession) as Map<String, dynamic>,
+            );
         _loading = false;
       });
     }
@@ -161,18 +165,13 @@ class _RoadTestAppState extends State<RoadTestApp> {
       context: rootContext,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return _PasswordChangeDialog(
-          accessToken: current.accessToken,
-        );
+        return _PasswordChangeDialog(accessToken: current.accessToken);
       },
     );
 
     if (changed == true && mounted && _session != null) {
       final updated = current.copyWith(
-        user: {
-          ...current.user,
-          'password_reset_required': false,
-        },
+        user: {...current.user, 'password_reset_required': false},
       );
       await _saveSession(updated);
       if (mounted) {
@@ -198,6 +197,10 @@ class _RoadTestAppState extends State<RoadTestApp> {
           secondary: AppColors.primary,
           surface: AppColors.surface,
           error: AppColors.danger,
+        ),
+        dialogTheme: const DialogThemeData(
+          insetPadding: EdgeInsets.zero,
+          alignment: Alignment.center,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.background,
@@ -268,11 +271,15 @@ class _ChangePasswordField extends StatelessWidget {
         suffixIcon: suffix,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.85)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.85),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.85)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.85),
+          ),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(18)),
@@ -284,9 +291,7 @@ class _ChangePasswordField extends StatelessWidget {
 }
 
 class _PasswordChangeDialog extends StatefulWidget {
-  const _PasswordChangeDialog({
-    required this.accessToken,
-  });
+  const _PasswordChangeDialog({required this.accessToken});
 
   final String accessToken;
 
@@ -295,9 +300,11 @@ class _PasswordChangeDialog extends StatefulWidget {
 }
 
 class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _obscure = true;
   bool _loading = false;
 
@@ -348,11 +355,7 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
       Navigator.of(context).pop(true);
     } catch (e) {
       messenger?.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) {
@@ -365,10 +368,9 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      insetPadding: EdgeInsets.zero,
       child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 420),
+        width: MediaQuery.sizeOf(context).width,
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -426,7 +428,9 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
                     ),
                   ),
                   IconButton(
-                    onPressed: _loading ? null : () => Navigator.of(context).pop(false),
+                    onPressed: _loading
+                        ? null
+                        : () => Navigator.of(context).pop(false),
                     icon: const Icon(Icons.close_rounded),
                   ),
                 ],
@@ -439,7 +443,9 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
                 suffix: IconButton(
                   onPressed: () => setState(() => _obscure = !_obscure),
                   icon: Icon(
-                    _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    _obscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
                     color: AppColors.textMuted,
                   ),
                 ),
@@ -482,7 +488,9 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
                   onPressed: _loading ? null : _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.55),
+                    disabledBackgroundColor: AppColors.primary.withValues(
+                      alpha: 0.55,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),

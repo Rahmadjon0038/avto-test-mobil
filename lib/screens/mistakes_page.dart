@@ -370,10 +370,12 @@ class _MistakesPageState extends State<MistakesPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
+        return MediaQuery.removePadding(
+          context: sheetContext,
+          removeBottom: true,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(26)),

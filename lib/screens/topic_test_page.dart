@@ -535,12 +535,15 @@ class _TopicTestPageState extends State<TopicTestPage> {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: false,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
+        return MediaQuery.removePadding(
+          context: context,
+          removeBottom: true,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(26)),

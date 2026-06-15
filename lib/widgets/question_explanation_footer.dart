@@ -245,80 +245,75 @@ Future<void> showQuestionTextExplanationSheet({
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                heightFactor: 0.40,
-                widthFactor: 1,
+              child: MediaQuery.removePadding(
+                context: dialogContext,
+                removeBottom: true,
                 child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(28),
                     ),
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => Navigator.of(dialogContext).pop(),
-                            child: Center(
-                              child: Container(
-                                width: 42,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD8DFEA),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
+                  child: Padding(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => Navigator.of(dialogContext).pop(),
+                          child: Center(
+                            child: Container(
+                              width: 42,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD8DFEA),
+                                borderRadius: BorderRadius.circular(99),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.description_outlined,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 7),
-                              const Text(
-                                'Izoh',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.text,
-                                ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: () =>
-                                    Navigator.of(dialogContext).pop(),
-                                icon: const Icon(Icons.close_rounded),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Text(
-                                explanation.trim().isNotEmpty
-                                    ? explanation
-                                    : 'Izoh mavjud emas',
-                                style: const TextStyle(
-                                  fontSize: 14.5,
-                                  height: 1.4,
-                                  color: AppColors.text,
-                                ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.description_outlined,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 7),
+                            const Text(
+                              'Izoh',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.text,
                               ),
                             ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          explanation.trim().isNotEmpty
+                              ? explanation
+                              : 'Izoh mavjud emas',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            height: 1.45,
+                            color: AppColors.text,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -376,10 +371,12 @@ Future<void> showTestLockedRestartSheet({
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (sheetContext) {
-      return SafeArea(
+      return MediaQuery.removePadding(
+        context: sheetContext,
+        removeBottom: true,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
@@ -542,204 +539,198 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
               .toDouble();
     final remaining = _duration - _position;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.34,
-      minChildSize: 0.28,
-      maxChildSize: 0.58,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              controller: scrollController,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => Navigator.of(context).pop(),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 24,
-                        child: Center(
-                          child: Container(
-                            width: 38,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD8DFEA),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                        ),
+    return MediaQuery.removePadding(
+      context: context,
+      removeBottom: true,
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 30),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).pop(),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 24,
+                  child: Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD8DFEA),
+                        borderRadius: BorderRadius.circular(99),
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.volume_up_outlined,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 7),
-                        const Text(
-                          'Audio izoh',
-                          style: TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.text,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (!_loading && _error == null)
-                          Text(
-                            _formatDuration(_duration),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 34,
-                            height: 34,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded, size: 20),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (_error != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(9),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFEDEE),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFF1B7B7)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _error!,
-                              style: const TextStyle(
-                                color: Color(0xFFB03A3A),
-                                height: 1.4,
-                              ),
-                            ),
-                            if (_pluginUnavailable) ...[
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 38,
-                                child: FilledButton.tonal(
-                                  onPressed: _openExternally,
-                                  child: const Text('Tashqarida ochish'),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      )
-                    else ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF7F8FB),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: AppColors.border.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  _formatDuration(_position),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  'Qolgan ${_formatDuration(remaining)}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 0),
-                            Slider(
-                              value: progress,
-                              activeColor: AppColors.primary,
-                              onChanged: _duration.inMilliseconds == 0
-                                  ? null
-                                  : (value) async {
-                                      final newPosition = Duration(
-                                        milliseconds:
-                                            (_duration.inMilliseconds * value)
-                                                .round(),
-                                      );
-                                      await _player.seek(newPosition);
-                                    },
-                            ),
-                            const SizedBox(height: 2),
-                            SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: _loading
-                                  ? const Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.2,
-                                        ),
-                                      ),
-                                    )
-                                  : FilledButton(
-                                      onPressed: _togglePlay,
-                                      style: FilledButton.styleFrom(
-                                        shape: const CircleBorder(),
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                      child: Icon(
-                                        _playerState == PlayerState.playing
-                                            ? Icons.pause_rounded
-                                            : Icons.play_arrow_rounded,
-                                        size: 22,
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.volume_up_outlined,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 7),
+                  const Text(
+                    'Audio izoh',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (!_loading && _error == null)
+                    Text(
+                      _formatDuration(_duration),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 34,
+                      height: 34,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              if (_error != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEDEE),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFF1B7B7)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: Color(0xFFB03A3A),
+                          height: 1.4,
+                        ),
+                      ),
+                      if (_pluginUnavailable) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: FilledButton.tonal(
+                            onPressed: _openExternally,
+                            child: const Text('Tashqarida ochish'),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FB),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            _formatDuration(_position),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Qolgan ${_formatDuration(remaining)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 0),
+                      Slider(
+                        value: progress,
+                        activeColor: AppColors.primary,
+                        onChanged: _duration.inMilliseconds == 0
+                            ? null
+                            : (value) async {
+                                final newPosition = Duration(
+                                  milliseconds:
+                                      (_duration.inMilliseconds * value)
+                                          .round(),
+                                );
+                                await _player.seek(newPosition);
+                              },
+                      ),
+                      const SizedBox(height: 2),
+                      SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: _loading
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
+                                ),
+                              )
+                            : FilledButton(
+                                onPressed: _togglePlay,
+                                style: FilledButton.styleFrom(
+                                  shape: const CircleBorder(),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: Icon(
+                                  _playerState == PlayerState.playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 22,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

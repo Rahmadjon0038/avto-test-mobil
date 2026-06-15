@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
 import '../services/api_client.dart';
+import 'privacy_policy_page.dart';
 import 'custom_tests_page.dart';
 import 'answers_page.dart';
 import 'exam_page.dart';
@@ -406,7 +407,9 @@ class HomeScreen extends StatelessWidget {
           return result ?? false;
         }
 
-        return SafeArea(
+        return MediaQuery.removePadding(
+          context: sheetContext,
+          removeBottom: true,
           child: StatefulBuilder(
             builder: (sheetContext, setSheetState) {
               Future<void> linkGoogle() async {
@@ -478,8 +481,8 @@ class HomeScreen extends StatelessWidget {
               }
 
               return Container(
-                margin: EdgeInsets.zero,
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: const BorderRadius.vertical(
@@ -493,148 +496,173 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 4,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
                           decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.surfaceTint,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: AppColors.primary,
+                            size: 30,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceTint,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: const Icon(
-                              Icons.person_rounded,
-                              color: AppColors.primary,
-                              size: 30,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Profil',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.text,
-                                  ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Profil',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.text,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  phone.isNotEmpty
-                                      ? phone
-                                      : 'Telefon raqam topilmadi',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton.icon(
-                          onPressed: onChangePassword,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          icon: const Icon(Icons.lock_reset_rounded),
-                          label: const Text('Parolni almashtirish'),
-                        ),
-                      ),
-                      if ((session.user['google_sub']?.toString() ?? '')
-                          .isEmpty) ...[
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: FilledButton.icon(
-                            onPressed: googleLoading ? null : linkGoogle,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F766E),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
                               ),
-                            ),
-                            icon: googleLoading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                    ),
-                                  )
-                                : const Icon(Icons.link_rounded),
-                            label: const Text('Google ulash'),
+                              const SizedBox(height: 4),
+                              Text(
+                                phone.isNotEmpty
+                                    ? phone
+                                    : 'Telefon raqam topilmadi',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton(
-                          onPressed: () {
-                            Navigator.of(sheetContext).pop();
-                            onLogout();
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E40AF),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.icon(
+                        onPressed: onChangePassword,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
                           ),
-                          child: const Text('Chiqish'),
                         ),
+                        icon: const Icon(Icons.lock_reset_rounded),
+                        label: const Text('Parolni almashtirish'),
                       ),
+                    ),
+                    if ((session.user['google_sub']?.toString() ?? '')
+                        .isEmpty) ...[
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
-                        child: FilledButton(
-                          onPressed: googleLoading ? null : deleteAccount,
+                        child: FilledButton.icon(
+                          onPressed: googleLoading ? null : linkGoogle,
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFB91C1C),
+                            backgroundColor: const Color(0xFF0F766E),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          child: const Text('Delete account'),
+                          icon: googleLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
+                                )
+                              : const Icon(Icons.link_rounded),
+                          label: const Text('Google ulash'),
                         ),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(sheetContext).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PrivacyPolicyPage(),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.text,
+                          side: BorderSide(
+                            color: AppColors.border.withValues(alpha: 0.9),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.policy_outlined, size: 18),
+                        label: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          onLogout();
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E40AF),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text('Chiqish'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton(
+                        onPressed: googleLoading ? null : deleteAccount,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFB91C1C),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text('Delete account'),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },

@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_colors.dart';
+import 'privacy_policy_page.dart';
 import '../services/api_client.dart';
 
 const String _googleIosClientId =
@@ -37,13 +39,23 @@ class _AuthPageState extends State<AuthPage> {
   bool _loading = false;
   bool _googleLoading = false;
   bool _hidePassword = true;
+  bool _acceptPrivacyPolicy = false;
+  late final TapGestureRecognizer _privacyPolicyRecognizer;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _privacyPolicyRecognizer = TapGestureRecognizer()
+      ..onTap = _openPrivacyPolicy;
+  }
 
   @override
   void dispose() {
     _phoneController.dispose();
     _passwordController.dispose();
     _forgotPhoneController.dispose();
+    _privacyPolicyRecognizer.dispose();
     super.dispose();
   }
 
@@ -52,6 +64,9 @@ class _AuthPageState extends State<AuthPage> {
       _mode = mode;
       _error = null;
       if (mode == AuthMode.login) {
+        _acceptPrivacyPolicy = false;
+      }
+      if (mode == AuthMode.login) {
         _forgotPhoneController.clear();
       }
     });
@@ -59,6 +74,17 @@ class _AuthPageState extends State<AuthPage> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_mode == AuthMode.register && !_acceptPrivacyPolicy) {
+      setState(() {
+        _error =
+            'Ro‘yxatdan o‘tish uchun maxfiylik siyosatiga rozilik bildiring';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maxfiylik siyosatiga rozilik bildiring')),
+      );
+      return;
+    }
 
     final phoneDigits = _normalizePhoneDigits(_phoneController.text);
     if (phoneDigits.length != 9) {
@@ -136,6 +162,12 @@ class _AuthPageState extends State<AuthPage> {
         setState(() => _googleLoading = false);
       }
     }
+  }
+
+  void _openPrivacyPolicy() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
   }
 
   Future<String?> _requestPasswordReset() async {
@@ -517,23 +549,77 @@ class _AuthPageState extends State<AuthPage> {
                               ),
                             ],
                             if (!isLogin) ...[
-                              const SizedBox(height: 8),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF3CD),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0xFFE7D08B),
+                              const SizedBox(height: 10),
+                              InkWell(
+                                onTap: _loading
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _acceptPrivacyPolicy =
+                                              !_acceptPrivacyPolicy;
+                                          _error = null;
+                                        });
+                                      },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                    vertical: 4,
                                   ),
-                                ),
-                                child: const Text(
-                                  'Ro‘yxatdan o‘tgandan keyin tizimga kirish uchun telefon raqam va parol ishlatiladi.',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    color: Color(0xFF6B5B20),
-                                    height: 1.35,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Checkbox(
+                                        value: _acceptPrivacyPolicy,
+                                        onChanged: _loading
+                                            ? null
+                                            : (value) {
+                                                setState(() {
+                                                  _acceptPrivacyPolicy =
+                                                      value ?? false;
+                                                  _error = null;
+                                                });
+                                              },
+                                        activeColor: AppColors.primary,
+                                        visualDensity: VisualDensity.compact,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 10,
+                                          ),
+                                          child: RichText(
+                                            text: TextSpan(
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textMuted,
+                                              ),
+                                              children: [
+                                                const TextSpan(
+                                                  text:
+                                                      'Maxfiylik siyosatiga roziman. ',
+                                                ),
+                                                TextSpan(
+                                                  text: 'Privacy Policy',
+                                                  style: const TextStyle(
+                                                    color: AppColors.primary,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  recognizer:
+                                                      _privacyPolicyRecognizer,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -564,64 +650,33 @@ class _AuthPageState extends State<AuthPage> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 14),
                             SizedBox(
                               width: double.infinity,
-                              height: 52,
+                              height: 54,
                               child: FilledButton(
                                 onPressed: _loading ? null : _submit,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.primary,
-                                  disabledBackgroundColor: AppColors.primary
-                                      .withValues(alpha: 0.55),
+                                  foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(18),
                                   ),
-                                  elevation: 0,
+                                  textStyle: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                                child: _loading
-                                    ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.4,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            isLogin
-                                                ? 'Kirish'
-                                                : "Ro'yxatdan o'tish",
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Container(
-                                            width: 28,
-                                            height: 28,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.18,
-                                              ),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.arrow_forward_rounded,
-                                              size: 17,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                child: Text(
+                                  _loading
+                                      ? 'Kutilmoqda...'
+                                      : isLogin
+                                      ? 'Kirish'
+                                      : "Ro'yxatdan o'tish",
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
                             Center(
                               child: TextButton(
                                 onPressed: _loading
