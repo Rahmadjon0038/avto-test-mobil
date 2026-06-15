@@ -14,13 +14,14 @@ import 'topic_test_page.dart';
 const Map<String, String> _videoRequestHeaders = <String, String>{
   'Referer': 'https://road-test.uz/',
   'Origin': 'https://road-test.uz',
-  'User-Agent': 'RoadTest/1.0 (Flutter)'
+  'User-Agent': 'RoadTest/1.0 (Flutter)',
 };
 
 class VideosPage extends StatefulWidget {
-  const VideosPage({super.key, required this.session});
+  const VideosPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<VideosPage> createState() => _VideosPageState();
@@ -28,6 +29,8 @@ class VideosPage extends StatefulWidget {
 
 class _VideosPageState extends State<VideosPage> {
   late Future<List<VideoLesson>> _videosFuture;
+  late AuthSession _activeSession;
+  late String _accessToken;
   VideoLesson? _activeVideo;
   String _playbackUrl = "";
   bool _loadingPlayback = false;
@@ -36,19 +39,45 @@ class _VideosPageState extends State<VideosPage> {
   @override
   void initState() {
     super.initState();
-    _videosFuture = ApiClient.videos(widget.session.accessToken);
+    _activeSession = widget.session;
+    _accessToken = _activeSession.accessToken;
+    _videosFuture = _loadVideos();
+  }
+
+  Future<List<VideoLesson>> _loadVideos() async {
+    try {
+      return await ApiClient.videos(_accessToken);
+    } on ApiException catch (error) {
+      final refreshToken = _activeSession.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        rethrow;
+      }
+
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return const <VideoLesson>[];
+      final active = refreshed.copyWith(user: _activeSession.user);
+      setState(() {
+        _activeSession = active;
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      return ApiClient.videos(active.accessToken);
+    }
   }
 
   void _openTopic(VideoLesson video) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TopicTestPage(
-          session: widget.session,
+          session: _activeSession,
           topic: TopicSummary(
             id: video.topicId,
             title: video.topicTitle,
             completed: false,
           ),
+          onSessionUpdated: widget.onSessionUpdated,
         ),
       ),
     );
@@ -64,7 +93,7 @@ class _VideosPageState extends State<VideosPage> {
 
     try {
       final url = await ApiClient.videoPlaybackUrl(
-        accessToken: widget.session.accessToken,
+        accessToken: _accessToken,
         videoId: video.id,
       );
       if (!mounted) return;
@@ -73,6 +102,42 @@ class _VideosPageState extends State<VideosPage> {
         _loadingPlayback = false;
       });
     } on ApiException catch (error) {
+      if (error.statusCode == 401 &&
+          _activeSession.refreshToken != null &&
+          _activeSession.refreshToken!.isNotEmpty) {
+        try {
+          final refreshed = await ApiClient.refresh(
+            _activeSession.refreshToken!,
+          );
+          if (!mounted) return;
+          final active = refreshed.copyWith(user: _activeSession.user);
+          setState(() {
+            _activeSession = active;
+            _accessToken = active.accessToken;
+          });
+          widget.onSessionUpdated?.call(active);
+          final url = await ApiClient.videoPlaybackUrl(
+            accessToken: active.accessToken,
+            videoId: video.id,
+          );
+          if (!mounted) return;
+          setState(() {
+            _playbackUrl = url;
+            _loadingPlayback = false;
+          });
+          return;
+        } on ApiException catch (refreshError) {
+          if (!mounted) return;
+          setState(() {
+            _playbackError = refreshError.message;
+            _loadingPlayback = false;
+          });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(refreshError.message)));
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _playbackError = error.message;
@@ -117,9 +182,7 @@ class _VideosPageState extends State<VideosPage> {
                         message: snapshot.error.toString(),
                         onRetry: () {
                           setState(() {
-                            _videosFuture = ApiClient.videos(
-                              widget.session.accessToken,
-                            );
+                            _videosFuture = _loadVideos();
                           });
                         },
                       );
@@ -132,8 +195,8 @@ class _VideosPageState extends State<VideosPage> {
 
                     return ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                    itemCount: videos.length,
-                    separatorBuilder: (context, index) =>
+                      itemCount: videos.length,
+                      separatorBuilder: (context, index) =>
                           const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final video = videos[index];

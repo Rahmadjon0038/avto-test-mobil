@@ -139,8 +139,10 @@ class HomeScreen extends StatelessWidget {
                               child: FilledButton(
                                 onPressed: () => Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        VideosPage(session: session),
+                                    builder: (_) => VideosPage(
+                                      session: session,
+                                      onSessionUpdated: onSessionUpdated,
+                                    ),
                                   ),
                                 ),
                                 style: FilledButton.styleFrom(
@@ -199,7 +201,10 @@ class HomeScreen extends StatelessWidget {
                       title: 'Mavzu bo‘yicha testlar',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => TopicsPage(session: session),
+                          builder: (_) => TopicsPage(
+                            session: session,
+                            onSessionUpdated: onSessionUpdated,
+                          ),
                         ),
                       ),
                     ),
@@ -310,9 +315,12 @@ class HomeScreen extends StatelessWidget {
       return;
     }
     if (title == 'Video darsliklar') {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => VideosPage(session: session)));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              VideosPage(session: session, onSessionUpdated: onSessionUpdated),
+        ),
+      );
       return;
     }
     Navigator.of(

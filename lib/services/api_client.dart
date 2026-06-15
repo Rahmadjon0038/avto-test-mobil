@@ -220,7 +220,10 @@ class ApiClient {
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(body['error']?.toString() ?? 'Mavzular yuklanmadi');
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Mavzular yuklanmadi',
+      );
     }
     final rawTopics = body['topics'];
     if (rawTopics is! List) return const [];
@@ -452,7 +455,10 @@ class ApiClient {
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(body['error']?.toString() ?? 'Xatolar saqlanmadi');
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Xatolar saqlanmadi',
+      );
     }
     return body;
   }
@@ -539,7 +545,10 @@ class ApiClient {
         continue;
       }
       if (response.statusCode >= 400) {
-        throw Exception(body['error']?.toString() ?? 'Savollar yuklanmadi');
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Savollar yuklanmadi',
+        );
       }
 
       final questions = _extractQuestions(body);

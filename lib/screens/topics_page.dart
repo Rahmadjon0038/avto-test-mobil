@@ -8,9 +8,10 @@ import '../services/api_client.dart';
 import 'topic_test_page.dart';
 
 class TopicsPage extends StatefulWidget {
-  const TopicsPage({super.key, required this.session});
+  const TopicsPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<TopicsPage> createState() => _TopicsPageState();
@@ -19,14 +20,41 @@ class TopicsPage extends StatefulWidget {
 class _TopicsPageState extends State<TopicsPage> {
   late Future<List<TopicSummary>> _topicsFuture;
   late Set<String> _markedTopicIds;
+  late AuthSession _activeSession;
+  late String _accessToken;
   bool _marksLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _topicsFuture = ApiClient.topics(widget.session.accessToken);
+    _activeSession = widget.session;
+    _accessToken = _activeSession.accessToken;
+    _topicsFuture = _loadTopics();
     _markedTopicIds = <String>{};
     _loadMarkedTopics();
+  }
+
+  Future<List<TopicSummary>> _loadTopics() async {
+    try {
+      return await ApiClient.topics(_accessToken);
+    } on ApiException catch (error) {
+      final refreshToken = _activeSession.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        rethrow;
+      }
+
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return const <TopicSummary>[];
+      final active = refreshed.copyWith(user: _activeSession.user);
+      setState(() {
+        _activeSession = active;
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      return ApiClient.topics(active.accessToken);
+    }
   }
 
   Future<void> _loadMarkedTopics() async {
@@ -77,13 +105,11 @@ class _TopicsPageState extends State<TopicsPage> {
                     if (snapshot.hasError) {
                       return _TopicsError(
                         message: snapshot.error.toString(),
-                          onRetry: () {
-                            setState(() {
-                              _topicsFuture = ApiClient.topics(
-                                widget.session.accessToken,
-                              );
-                            });
-                          },
+                        onRetry: () {
+                          setState(() {
+                            _topicsFuture = _loadTopics();
+                          });
+                        },
                       );
                     }
 
@@ -103,7 +129,8 @@ class _TopicsPageState extends State<TopicsPage> {
                       itemBuilder: (context, index) {
                         final topic = topics[index];
                         final marked =
-                            topic.completed || _markedTopicIds.contains(topic.id);
+                            topic.completed ||
+                            _markedTopicIds.contains(topic.id);
                         return _TopicCard(
                           topic: topic,
                           marked: marked,
@@ -112,8 +139,9 @@ class _TopicsPageState extends State<TopicsPage> {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => TopicTestPage(
-                                  session: widget.session,
+                                  session: _activeSession,
                                   topic: topic,
+                                  onSessionUpdated: widget.onSessionUpdated,
                                 ),
                               ),
                             );
@@ -281,9 +309,7 @@ class _TopicsLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 }
 

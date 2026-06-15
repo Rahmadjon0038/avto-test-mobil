@@ -11,10 +11,16 @@ import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class TopicTestPage extends StatefulWidget {
-  const TopicTestPage({super.key, required this.session, required this.topic});
+  const TopicTestPage({
+    super.key,
+    required this.session,
+    required this.topic,
+    this.onSessionUpdated,
+  });
 
   final AuthSession session;
   final TopicSummary topic;
+  final ValueChanged<AuthSession>? onSessionUpdated;
 
   @override
   State<TopicTestPage> createState() => _TopicTestPageState();
@@ -28,17 +34,47 @@ class _TopicTestPageState extends State<TopicTestPage> {
   bool _resultShown = false;
   bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
+  late AuthSession _activeSession;
+  late String _accessToken;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _questionCardKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _questionsFuture = ApiClient.topicQuestions(
-      accessToken: widget.session.accessToken,
-      topicId: widget.topic.id,
-    );
+    _activeSession = widget.session;
+    _accessToken = _activeSession.accessToken;
+    _questionsFuture = _loadQuestions();
     _loadSettings();
+  }
+
+  Future<List<TopicQuestion>> _loadQuestions() async {
+    try {
+      return await ApiClient.topicQuestions(
+        accessToken: _accessToken,
+        topicId: widget.topic.id,
+      );
+    } on ApiException catch (error) {
+      final refreshToken = _activeSession.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        rethrow;
+      }
+
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return const <TopicQuestion>[];
+      final active = refreshed.copyWith(user: _activeSession.user);
+      setState(() {
+        _activeSession = active;
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      return ApiClient.topicQuestions(
+        accessToken: active.accessToken,
+        topicId: widget.topic.id,
+      );
+    }
   }
 
   Future<void> _loadSettings() async {
