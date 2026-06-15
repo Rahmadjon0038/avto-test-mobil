@@ -1,4 +1,4 @@
-package com.example.avto_test_mobil
+package uz.roadtest.app
 
 import io.flutter.embedding.android.FlutterActivity
 
