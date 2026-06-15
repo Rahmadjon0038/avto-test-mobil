@@ -132,7 +132,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _googleLogin() async {
-    if (_loading || _googleLoading || Platform.isIOS) return;
+    if (_loading || _googleLoading) return;
 
     setState(() {
       _googleLoading = true;
@@ -434,8 +434,8 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
-    final showGoogleButton = !Platform.isIOS;
-    final showAppleButton = Platform.isIOS || Platform.isMacOS;
+    final showGoogleButton = Platform.isAndroid;
+    final showAppleButton = false;
 
     return Scaffold(
       backgroundColor: Colors.white,
