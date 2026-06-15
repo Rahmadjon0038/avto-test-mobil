@@ -579,8 +579,9 @@ class HomeScreen extends StatelessWidget {
                         label: const Text('Parolni almashtirish'),
                       ),
                     ),
-                    if ((session.user['google_sub']?.toString() ?? '')
-                        .isEmpty) ...[
+                    if (Platform.isAndroid &&
+                        (session.user['google_sub']?.toString() ?? '')
+                            .isEmpty) ...[
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,

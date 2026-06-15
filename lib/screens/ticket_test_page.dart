@@ -481,6 +481,10 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _answers.add(null);
     }
     _answers[questionIndex] = answerIndex;
+    final questions = _loadedQuestions;
+    if (questions != null) {
+      _syncProgress(questions, silent: true);
+    }
   }
 
   void _goToNextQuestion() {
@@ -552,6 +556,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
     final total = questions.length;
     final wrong = total - correct;
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
+    await _syncProgress(questions);
     if (!_resultShown && mounted) {
       _resultShown = true;
       await _showResultModal(
@@ -560,6 +565,64 @@ class _TicketTestPageState extends State<TicketTestPage> {
         total: total,
         percent: percent,
       );
+    }
+  }
+
+  Map<String, int> _answersByQuestionId(List<TopicQuestion> questions) {
+    final payload = <String, int>{};
+    for (var index = 0; index < questions.length; index++) {
+      if (index >= _answers.length) continue;
+      final answer = _answers[index];
+      final questionId = questions[index].id.trim();
+      if (answer != null && questionId.isNotEmpty) {
+        payload[questionId] = answer;
+      }
+    }
+    return payload;
+  }
+
+  Future<void> _syncProgress(
+    List<TopicQuestion> questions, {
+    bool silent = false,
+  }) async {
+    final payload = _answersByQuestionId(questions);
+    if (payload.isEmpty) return;
+    try {
+      await ApiClient.saveTicketProgress(
+        accessToken: _accessToken,
+        ticketId: widget.ticket.id,
+        answers: payload,
+      );
+    } on ApiException catch (error) {
+      final refreshToken = widget.session.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
+        return;
+      }
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return;
+      final active = refreshed.copyWith(user: widget.session.user);
+      setState(() {
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      await ApiClient.saveTicketProgress(
+        accessToken: active.accessToken,
+        ticketId: widget.ticket.id,
+        answers: payload,
+      );
+    } catch (error) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     }
   }
 
