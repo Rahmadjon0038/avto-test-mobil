@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
@@ -17,11 +14,6 @@ import 'topics_page.dart';
 import 'marathon_page.dart';
 import 'videos_page.dart';
 import '../widgets/top_bar.dart';
-
-const String _googleWebClientId =
-    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
-const String _googleIosClientId =
-    '844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -349,41 +341,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        final googleSignIn = GoogleSignIn(
-          scopes: <String>['email'],
-          clientId: Platform.isIOS || Platform.isMacOS
-              ? _googleIosClientId
-              : null,
-          serverClientId: _googleWebClientId,
-        );
-        bool googleLoading = false;
-
-        Future<bool> confirmGoogleLink() async {
-          final result = await showDialog<bool>(
-            context: sheetContext,
-            barrierDismissible: false,
-            builder: (dialogContext) {
-              return AlertDialog(
-                title: const Text('Google ulash'),
-                content: const Text(
-                  'Google akkauntingizni telefon orqali kirgan hisobingizga birlashtirish uchun ruxsat kerak. '
-                  'Shunda keyin telefon raqam yoki Google orqali kirganingizda bitta akkaunt ochiladi.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text('Bekor qilish'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text('Roziman'),
-                  ),
-                ],
-              );
-            },
-          );
-          return result ?? false;
-        }
+        bool actionLoading = false;
 
         Future<bool> confirmDeleteAccount() async {
           final result = await showDialog<bool>(
@@ -420,51 +378,11 @@ class HomeScreen extends StatelessWidget {
           removeBottom: true,
           child: StatefulBuilder(
             builder: (sheetContext, setSheetState) {
-              Future<void> linkGoogle() async {
-                if (googleLoading) return;
-                final accepted = await confirmGoogleLink();
-                if (!accepted) return;
-                setSheetState(() => googleLoading = true);
-                try {
-                  final account = await googleSignIn.signIn();
-                  if (account == null) return;
-                  final auth = await account.authentication;
-                  final idToken = auth.idToken;
-                  if (idToken == null || idToken.isEmpty) {
-                    throw Exception('Google token topilmadi');
-                  }
-                  final linked = await ApiClient.googleLogin(
-                    idToken: idToken,
-                    accessToken: session.accessToken,
-                  );
-                  onSessionUpdated(linked);
-                  if (sheetContext.mounted) {
-                    ScaffoldMessenger.of(sheetContext).showSnackBar(
-                      const SnackBar(content: Text('Google akkaunti ulandi')),
-                    );
-                  }
-                } catch (e) {
-                  if (sheetContext.mounted) {
-                    ScaffoldMessenger.of(sheetContext).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          e.toString().replaceFirst('Exception: ', ''),
-                        ),
-                      ),
-                    );
-                  }
-                } finally {
-                  if (sheetContext.mounted) {
-                    setSheetState(() => googleLoading = false);
-                  }
-                }
-              }
-
               Future<void> deleteAccount() async {
-                if (googleLoading) return;
+                if (actionLoading) return;
                 final accepted = await confirmDeleteAccount();
                 if (!accepted) return;
-                setSheetState(() => googleLoading = true);
+                setSheetState(() => actionLoading = true);
                 try {
                   await ApiClient.deleteAccount(session.accessToken);
                   if (sheetContext.mounted) {
@@ -483,7 +401,7 @@ class HomeScreen extends StatelessWidget {
                   }
                 } finally {
                   if (sheetContext.mounted) {
-                    setSheetState(() => googleLoading = false);
+                    setSheetState(() => actionLoading = false);
                   }
                 }
               }
@@ -579,35 +497,6 @@ class HomeScreen extends StatelessWidget {
                         label: const Text('Parolni almashtirish'),
                       ),
                     ),
-                    if (Platform.isAndroid &&
-                        (session.user['google_sub']?.toString() ?? '')
-                            .isEmpty) ...[
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton.icon(
-                          onPressed: googleLoading ? null : linkGoogle,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F766E),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          icon: googleLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              : const Icon(Icons.link_rounded),
-                          label: const Text('Google ulash'),
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
@@ -660,7 +549,7 @@ class HomeScreen extends StatelessWidget {
                       width: double.infinity,
                       height: 50,
                       child: FilledButton(
-                        onPressed: googleLoading ? null : deleteAccount,
+                        onPressed: actionLoading ? null : deleteAccount,
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFFB91C1C),
                           foregroundColor: Colors.white,

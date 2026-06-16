@@ -89,34 +89,6 @@ class ApiClient {
     );
   }
 
-  static Future<AuthSession> googleLogin({
-    required String idToken,
-    String? accessToken,
-  }) async {
-    final authHeaders = _jsonHeaders(accessToken: accessToken);
-    final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/auth/google'),
-      headers: authHeaders,
-      body: jsonEncode({'idToken': idToken}),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw Exception(
-        body['error']?.toString() ?? 'Google orqali kirish amalga oshmadi',
-      );
-    }
-    final nextAccessToken = body['accessToken']?.toString();
-    final user = body['user'];
-    if (nextAccessToken == null || nextAccessToken.isEmpty || user is! Map) {
-      throw Exception('Noto‘g‘ri javob keldi');
-    }
-    return AuthSession(
-      accessToken: nextAccessToken,
-      refreshToken: _extractRefreshToken(response),
-      user: Map<String, dynamic>.from(user),
-    );
-  }
-
   static Future<AuthSession> appleLogin({
     required String identityToken,
     String? email,

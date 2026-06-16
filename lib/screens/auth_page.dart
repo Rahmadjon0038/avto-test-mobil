@@ -3,17 +3,11 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../core/app_colors.dart';
 import 'privacy_policy_page.dart';
 import '../services/api_client.dart';
-
-const String _googleIosClientId =
-    '844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com';
-const String _googleServerClientId =
-    '844953821020-2dcgvd7i32rvpj552gkgopat9278tnfe.apps.googleusercontent.com';
 
 enum AuthMode { login, register }
 
@@ -32,13 +26,7 @@ class _AuthPageState extends State<AuthPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _forgotPhoneController = TextEditingController();
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: <String>['email'],
-    clientId: Platform.isIOS || Platform.isMacOS ? _googleIosClientId : null,
-    serverClientId: _googleServerClientId,
-  );
   bool _loading = false;
-  bool _googleLoading = false;
   bool _appleLoading = false;
   bool _hidePassword = true;
   bool _acceptPrivacyPolicy = false;
@@ -127,41 +115,6 @@ class _AuthPageState extends State<AuthPage> {
     } finally {
       if (mounted) {
         setState(() => _loading = false);
-      }
-    }
-  }
-
-  Future<void> _googleLogin() async {
-    if (_loading || _googleLoading) return;
-
-    setState(() {
-      _googleLoading = true;
-      _error = null;
-    });
-
-    try {
-      final account = await _googleSignIn.signIn();
-      if (account == null) {
-        if (!mounted) return;
-        setState(() => _googleLoading = false);
-        return;
-      }
-
-      final auth = await account.authentication;
-      final idToken = auth.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw Exception('Google token topilmadi');
-      }
-
-      final session = await ApiClient.googleLogin(idToken: idToken);
-      if (!mounted) return;
-      Navigator.of(context).pop(session);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => _googleLoading = false);
       }
     }
   }
@@ -333,6 +286,7 @@ class _AuthPageState extends State<AuthPage> {
           );
         }
       }
+
       return tempPassword;
     } catch (e) {
       if (!mounted) return null;
@@ -434,8 +388,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
-    final showGoogleButton = Platform.isAndroid;
-    final showAppleButton = false;
+    final showAppleButton = Platform.isIOS;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -750,24 +703,12 @@ class _AuthPageState extends State<AuthPage> {
                                 ),
                               ),
                             ),
-                            if (showGoogleButton || showAppleButton) ...[
+                            if (showAppleButton) ...[
                               const SizedBox(height: 14),
-                              if (showGoogleButton)
-                                _GoogleButton(
-                                  loading: _googleLoading,
-                                  onPressed: _googleLoading
-                                      ? null
-                                      : _googleLogin,
-                                ),
-                              if (showGoogleButton && showAppleButton)
-                                const SizedBox(height: 10),
-                              if (showAppleButton)
-                                _AppleButton(
-                                  loading: _appleLoading,
-                                  onPressed: _appleLoading
-                                      ? null
-                                      : _appleLogin,
-                                ),
+                              _AppleButton(
+                                loading: _appleLoading,
+                                onPressed: _appleLoading ? null : _appleLogin,
+                              ),
                             ],
                           ],
                         ),
@@ -943,53 +884,6 @@ class _ModeTab extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({required this.loading, required this.onPressed});
-
-  final bool loading;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        icon: loading
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: AppColors.primary,
-                ),
-              )
-            : const Icon(
-                Icons.g_mobiledata_rounded,
-                size: 28,
-                color: AppColors.primary,
-              ),
-        label: const Text(
-          'Google orqali kirish',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: AppColors.text,
-          ),
         ),
       ),
     );
