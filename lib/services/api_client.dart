@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import '../core/app_constants.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
-import '../models/password_reset_response.dart';
 import '../models/video_lesson.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
@@ -124,35 +123,19 @@ class ApiClient {
     );
   }
 
-  static Future<PasswordResetResponse> requestPasswordReset({
-    required String phone,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/auth/password-reset/request'),
-      headers: _jsonHeaders(),
-      body: jsonEncode({'phone': phone}),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw Exception(
-        body['error']?.toString() ?? 'Parolni tiklash amalga oshmadi',
-      );
-    }
-    return PasswordResetResponse.fromJson(body);
-  }
-
   static Future<void> changePassword({
     required String accessToken,
-    required String currentPassword,
+    String? currentPassword,
     required String newPassword,
   }) async {
+    final requestBody = <String, String>{'newPassword': newPassword};
+    if (currentPassword != null) {
+      requestBody['currentPassword'] = currentPassword;
+    }
     final response = await http.post(
       Uri.parse('$apiBaseUrl/api/auth/password-change'),
       headers: _jsonHeaders(accessToken: accessToken),
-      body: jsonEncode({
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-      }),
+      body: jsonEncode(requestBody),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {

@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_colors.dart';
 import 'privacy_policy_page.dart';
@@ -25,7 +26,6 @@ class _AuthPageState extends State<AuthPage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _forgotPhoneController = TextEditingController();
   bool _loading = false;
   bool _appleLoading = false;
   bool _hidePassword = true;
@@ -44,7 +44,6 @@ class _AuthPageState extends State<AuthPage> {
   void dispose() {
     _phoneController.dispose();
     _passwordController.dispose();
-    _forgotPhoneController.dispose();
     _privacyPolicyRecognizer.dispose();
     super.dispose();
   }
@@ -55,9 +54,6 @@ class _AuthPageState extends State<AuthPage> {
       _error = null;
       if (mode == AuthMode.login) {
         _acceptPrivacyPolicy = false;
-      }
-      if (mode == AuthMode.login) {
-        _forgotPhoneController.clear();
       }
     });
   }
@@ -172,214 +168,132 @@ class _AuthPageState extends State<AuthPage> {
     ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
   }
 
-  Future<String?> _requestPasswordReset() async {
-    final phoneDigits = _normalizePhoneDigits(_forgotPhoneController.text);
-    if (phoneDigits.length != 9) {
-      setState(() => _error = 'Telefon raqam noto‘g‘ri');
-      return null;
-    }
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await ApiClient.requestPasswordReset(
-        phone: '+998$phoneDigits',
-      );
-      if (!mounted) return null;
-      final tempPassword = response.temporaryPassword?.trim().isNotEmpty == true
-          ? response.temporaryPassword!.trim()
-          : null;
-      final message = tempPassword != null
-          ? 'Bir martalik parol: $tempPassword'
-          : response.message.isNotEmpty
-          ? response.message
-          : 'Bir martalik parol yaratildi';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-      if (tempPassword != null) {
-        final phoneDigits = _normalizePhoneDigits(_forgotPhoneController.text);
-        if (phoneDigits.isNotEmpty) {
-          _phoneController.text = _formatUzPhoneDigits(phoneDigits);
-        }
-        _passwordController.text = tempPassword;
-        if (mounted) {
-          await showDialog<void>(
-            context: context,
-            builder: (dialogContext) {
-              return AlertDialog(
-                title: const Text('Bir martalik parol'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Parol yaratildi. Uni nusxalab olishingiz mumkin. Tizimga kirgandan keyin albatta parolni almashtiring.',
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F6FB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SelectableText(
-                              tempPassword,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          TextButton.icon(
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                ClipboardData(text: tempPassword),
-                              );
-                              if (dialogContext.mounted) {
-                                ScaffoldMessenger.of(
-                                  dialogContext,
-                                ).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Parol nusxalandi'),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.copy_rounded, size: 18),
-                            label: const Text('Nusxalash'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Keyin'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                      _switchMode(AuthMode.login);
-                      _submit();
-                    },
-                    child: const Text('Kirish'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      }
-
-      return tempPassword;
-    } catch (e) {
-      if (!mounted) return null;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-      return null;
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
-  }
-
   Future<void> _openForgotPasswordDialog() async {
-    _forgotPhoneController.clear();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Parolni tiklash'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Telefon raqamingizni kiriting. Sizga bir martalik parol beriladi.',
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _forgotPhoneController,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: const [_UzPhoneInputFormatter()],
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '90 123 45 67',
-                      hintStyle: TextStyle(
-                        color: Color(0xFFB8C0CC),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      prefixText: '+998 ',
-                      prefixStyle: TextStyle(
-                        color: AppColors.text,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      filled: true,
-                      fillColor: Color(0xFFF7F9FC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14)),
-                        borderSide: BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14)),
-                        borderSide: BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14)),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Bekor qilish'),
-                ),
-                FilledButton(
-                  onPressed: _loading
-                      ? null
-                      : () async {
-                          final tempPassword = await _requestPasswordReset();
-                          if (tempPassword != null && dialogContext.mounted) {
-                            Navigator.of(dialogContext).pop();
-                            if (mounted) {
-                              setState(() {
-                                _mode = AuthMode.login;
-                              });
-                            }
-                          }
-                          setDialogState(() {});
-                        },
-                  child: Text(_loading ? 'Yuborilmoqda...' : 'Yuborish'),
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x26000000),
+                  blurRadius: 30,
+                  offset: Offset(0, 16),
                 ),
               ],
-            );
-          },
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceTint,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.lock_reset_rounded,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Parolni tiklash',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Agar parolingizni unutgan bo‘lsangiz, admin bilan Telegram orqali bog‘laning. Admin sizga vaqtinchalik parol beradi.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final phoneDigits = _normalizePhoneDigits(
+                        _phoneController.text,
+                      );
+                      final phone = phoneDigits.length == 9
+                          ? '+998$phoneDigits'
+                          : '';
+                      final text =
+                          'Salom, men Road Test ilovasida parolimni unutdim. Telefon raqamim: $phone';
+                      // Admin username: @Rahmadjonn (strip leading @ for t.me link)
+                      final adminUsername = 'Rahmadjonn'.replaceAll(RegExp(r'^@'), '');
+                      final url = Uri.parse(
+                        'https://t.me/$adminUsername?text=${Uri.encodeComponent(text)}',
+                      );
+                      final opened = await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                      if (!opened && dialogContext.mounted) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('Telegram ochilmadi')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.send_rounded),
+                    label: const Text('Telegram orqali adminga yozish'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF229ED9),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFB7D2FF)),
+                  ),
+                  child: const Text(
+                    'Adminga aynan shu xabarni yuboring. Telefon raqamingiz orqali accountingiz topiladi.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: Color(0xFF2450A6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
