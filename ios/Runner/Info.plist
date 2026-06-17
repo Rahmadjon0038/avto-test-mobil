@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Road-test</string>
+	<string>Road Test</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Road-test</string>
+	<string>Road Test</string>
 	<key>GIDClientID</key>
 	<string>844953821020-u94ktl35es9aquthb8rh5rmg7etossra.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>

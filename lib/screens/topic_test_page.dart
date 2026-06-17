@@ -305,8 +305,8 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                         ? () {
                                             setState(() {
                                               _selectedIndex = index;
-                                              _saveAnswer(_currentIndex, index);
                                             });
+                                            _saveAnswer(_currentIndex, index);
                                             if (!isLast &&
                                                 _autoAdvanceEnabled) {
                                               _advanceToNextQuestion();
@@ -471,6 +471,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
       _answers.add(null);
     }
     _answers[questionIndex] = answerIndex;
+    final questions = _loadedQuestions;
+    if (questions != null) {
+      _syncProgress(questions, silent: true);
+    }
   }
 
   void _restartTest() {
@@ -533,6 +537,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
     final total = questions.length;
     final wrong = total - correct;
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
+    await _syncProgress(questions);
     if (!_resultShown && mounted) {
       _resultShown = true;
       await _showResultModal(
@@ -541,6 +546,65 @@ class _TopicTestPageState extends State<TopicTestPage> {
         total: total,
         percent: percent,
       );
+    }
+  }
+
+  Map<String, int> _answersByQuestionId(List<TopicQuestion> questions) {
+    final payload = <String, int>{};
+    for (var index = 0; index < questions.length; index++) {
+      if (index >= _answers.length) continue;
+      final answer = _answers[index];
+      final questionId = questions[index].id.trim();
+      if (answer != null && questionId.isNotEmpty) {
+        payload[questionId] = answer;
+      }
+    }
+    return payload;
+  }
+
+  Future<void> _syncProgress(
+    List<TopicQuestion> questions, {
+    bool silent = false,
+  }) async {
+    final payload = _answersByQuestionId(questions);
+    if (payload.isEmpty) return;
+    try {
+      await ApiClient.saveTopicProgress(
+        accessToken: _accessToken,
+        topicId: widget.topic.id,
+        answers: payload,
+      );
+    } on ApiException catch (error) {
+      final refreshToken = _activeSession.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
+        return;
+      }
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return;
+      final active = refreshed.copyWith(user: _activeSession.user);
+      setState(() {
+        _activeSession = active;
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      await ApiClient.saveTopicProgress(
+        accessToken: active.accessToken,
+        topicId: widget.topic.id,
+        answers: payload,
+      );
+    } catch (error) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     }
   }
 

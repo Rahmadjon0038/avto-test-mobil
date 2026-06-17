@@ -1,5 +1,6 @@
 class TopicQuestion {
   TopicQuestion({
+    required this.id,
     required this.text,
     required this.options,
     required this.correctIndex,
@@ -8,6 +9,7 @@ class TopicQuestion {
     required this.audio,
   });
 
+  final String id;
   final String text;
   final List<String> options;
   final int correctIndex;
@@ -18,6 +20,7 @@ class TopicQuestion {
   factory TopicQuestion.fromJson(Map<String, dynamic> json) {
     final rawOptions = json['options'];
     return TopicQuestion(
+      id: (json['id'] ?? json['questionKey'] ?? '').toString(),
       text: (json['text'] ?? '').toString(),
       options: rawOptions is List
           ? rawOptions.map((option) => option.toString()).toList()
