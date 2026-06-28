@@ -1,4 +1,5 @@
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
@@ -503,6 +504,13 @@ class HomeScreen extends StatelessWidget {
                       height: 44,
                       child: OutlinedButton.icon(
                         onPressed: () {
+                          if (Platform.isMacOS) {
+                            launchUrl(
+                              Uri.parse('https://topshirdi.uz/privacy'),
+                              mode: LaunchMode.externalApplication,
+                            );
+                            return;
+                          }
                           Navigator.of(sheetContext).push(
                             MaterialPageRoute(
                               builder: (_) => const PrivacyPolicyPage(),

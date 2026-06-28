@@ -163,9 +163,16 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void _openPrivacyPolicy() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
+    if (Platform.isMacOS) {
+      launchUrl(
+        Uri.parse('https://topshirdi.uz/privacy'),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+    );
   }
 
   Future<void> _openForgotPasswordDialog() async {

@@ -44,7 +44,7 @@ class SplashScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Road-test',
+                'Topshirdi',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,

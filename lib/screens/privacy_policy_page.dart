@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../core/app_colors.dart';
@@ -18,13 +21,19 @@ class PrivacyPolicyPage extends StatefulWidget {
 }
 
 class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _loading = true;
   bool _usingFallback = false;
+  final bool _macOSFallback = Platform.isMacOS;
 
   @override
   void initState() {
     super.initState();
+    if (_macOSFallback) {
+      _loading = false;
+      return;
+    }
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
@@ -40,13 +49,13 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                 error.response?.statusCode == 403 ||
                 error.response?.statusCode == 500) {
               _usingFallback = true;
-              await _controller.loadHtmlString(_fallbackHtml());
+              await _controller?.loadHtmlString(_fallbackHtml());
             }
           },
           onWebResourceError: (_) async {
             if (!mounted || _usingFallback) return;
             _usingFallback = true;
-            await _controller.loadHtmlString(_fallbackHtml());
+            await _controller?.loadHtmlString(_fallbackHtml());
           },
         ),
       )
@@ -55,12 +64,64 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_macOSFallback) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: Text(widget.title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.policy_outlined, size: 64, color: AppColors.primary),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Maxfiylik siyosati macOS brauzerida ochiladi.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Davom etish uchun brauzerda ochish tugmasini bosing.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await launchUrl(
+                        Uri.parse(widget.url),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('Brauzerda ochish'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text(widget.title)),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          WebViewWidget(controller: _controller!),
           if (_loading)
             const Positioned.fill(
               child: ColoredBox(
