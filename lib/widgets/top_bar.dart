@@ -67,12 +67,8 @@ class _BrandMark extends StatelessWidget {
             ),
             children: [
               TextSpan(
-                text: 'ROAD ',
+                text: 'Topshirdi',
                 style: TextStyle(color: AppColors.primary),
-              ),
-              TextSpan(
-                text: 'TEST',
-                style: TextStyle(color: AppColors.text),
               ),
             ],
           ),

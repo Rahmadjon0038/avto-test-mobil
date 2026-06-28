@@ -12,9 +12,9 @@ import '../services/api_client.dart';
 import 'topic_test_page.dart';
 
 const Map<String, String> _videoRequestHeaders = <String, String>{
-  'Referer': 'https://road-test.uz/',
-  'Origin': 'https://road-test.uz',
-  'User-Agent': 'RoadTest/1.0 (Flutter)',
+  'Referer': 'https://topshirdi.uz/',
+  'Origin': 'https://topshirdi.uz',
+  'User-Agent': 'Topshirdi/1.0 (Flutter)',
 };
 
 class VideosPage extends StatefulWidget {

@@ -245,7 +245,7 @@ class _AuthPageState extends State<AuthPage> {
                           ? '+998$phoneDigits'
                           : '';
                       final text =
-                          'Salom, men Road Test ilovasida parolimni unutdim. Telefon raqamim: $phone';
+                          'Salom, men Topshirdi ilovasida parolimni unutdim. Telefon raqamim: $phone';
                       // Admin username: @Rahmadjonn (strip leading @ for t.me link)
                       final adminUsername = 'Rahmadjonn'.replaceAll(RegExp(r'^@'), '');
                       final url = Uri.parse(
@@ -727,16 +727,9 @@ class _AuthBrand extends StatelessWidget {
         ),
         children: [
           TextSpan(
-            text: 'ROAD ',
+            text: 'Topshirdi',
             style: TextStyle(
               color: AppColors.primary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          TextSpan(
-            text: 'TEST',
-            style: TextStyle(
-              color: AppColors.text,
               fontStyle: FontStyle.italic,
             ),
           ),

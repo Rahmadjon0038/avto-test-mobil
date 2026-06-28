@@ -6,7 +6,7 @@ import '../core/app_colors.dart';
 class PrivacyPolicyPage extends StatefulWidget {
   const PrivacyPolicyPage({
     super.key,
-    this.url = 'https://road-test.uz/privacy',
+    this.url = 'https://topshirdi.uz/privacy',
     this.title = 'Maxfiylik siyosati',
   });
 
@@ -81,7 +81,7 @@ String _fallbackHtml() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maxfiylik siyosati - Road Test</title>
+  <title>Maxfiylik siyosati - Topshirdi</title>
   <style>
     :root { color-scheme: light dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f8fc; color: #1f2937; }
@@ -104,13 +104,13 @@ String _fallbackHtml() {
   <div class="wrap">
     <div class="hero">
       <h1>Maxfiylik siyosati</h1>
-      <p>Road Test foydalanuvchi ma'lumotlarini qanday yig'ishi, ishlatishi va himoya qilishini tushuntiradi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini qanday yig'ishi, ishlatishi va himoya qilishini tushuntiradi.</p>
       <div class="pill">Oxirgi yangilanish: 2026-06-14</div>
     </div>
 
     <div class="card">
       <h2>1. Yig'iladigan ma'lumotlar</h2>
-      <p>Road Test quyidagi ma'lumotlarni yig'ishi mumkin:</p>
+      <p>Topshirdi quyidagi ma'lumotlarni yig'ishi mumkin:</p>
       <ul>
         <li>Ism</li>
         <li>Email manzil</li>
@@ -134,13 +134,13 @@ String _fallbackHtml() {
 
     <div class="card">
       <h2>3. Ma'lumot ulashish</h2>
-      <p>Road Test foydalanuvchi ma'lumotlarini sotmaydi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini sotmaydi.</p>
       <p>Ma'lumotlar qonun talab qilgan holatlardan tashqari uchinchi tomonlarga berilmaydi.</p>
     </div>
 
     <div class="card">
       <h2>4. Xavfsizlik</h2>
-      <p>Road Test foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
     </div>
 
     <div class="card">
@@ -159,13 +159,13 @@ String _fallbackHtml() {
 
     <div class="card">
       <h2>7. Siyosat o'zgarishlari</h2>
-      <p>Road Test ushbu maxfiylik siyosatini kelajakda yangilashi mumkin.</p>
+      <p>Topshirdi ushbu maxfiylik siyosatini kelajakda yangilashi mumkin.</p>
     </div>
 
     <div class="card footer">
       <h2>Aloqa</h2>
-      <p><a href="mailto:support@road-test.uz">support@road-test.uz</a></p>
-      <p><a href="https://road-test.uz">https://road-test.uz</a></p>
+      <p><a href="mailto:support@topshirdi.uz">support@topshirdi.uz</a></p>
+      <p><a href="https://topshirdi.uz">https://topshirdi.uz</a></p>
       <p class="muted">Agar asosiy sahifa javob bermasa, ushbu ichki variant ko'rsatiladi.</p>
     </div>
   </div>

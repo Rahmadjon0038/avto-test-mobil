@@ -12,14 +12,14 @@ import '../screens/landing_screen.dart';
 import '../screens/splash_screen.dart';
 import '../services/api_client.dart';
 
-class RoadTestApp extends StatefulWidget {
-  const RoadTestApp({super.key});
+class TopshirdiApp extends StatefulWidget {
+  const TopshirdiApp({super.key});
 
   @override
-  State<RoadTestApp> createState() => _RoadTestAppState();
+  State<TopshirdiApp> createState() => _TopshirdiAppState();
 }
 
-class _RoadTestAppState extends State<RoadTestApp> {
+class _TopshirdiAppState extends State<TopshirdiApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   AuthSession? _session;
   bool _loading = true;
@@ -191,7 +191,7 @@ class _RoadTestAppState extends State<RoadTestApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: _navigatorKey,
-      title: 'Road Test Mobil Ilova',
+      title: 'Topshirdi Mobil Ilova',
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
