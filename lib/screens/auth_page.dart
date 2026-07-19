@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_colors.dart';
@@ -27,7 +26,6 @@ class _AuthPageState extends State<AuthPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
-  bool _appleLoading = false;
   bool _hidePassword = true;
   bool _acceptPrivacyPolicy = false;
   late final TapGestureRecognizer _privacyPolicyRecognizer;
@@ -111,53 +109,6 @@ class _AuthPageState extends State<AuthPage> {
     } finally {
       if (mounted) {
         setState(() => _loading = false);
-      }
-    }
-  }
-
-  Future<void> _appleLogin() async {
-    if (_loading || _appleLoading || Platform.isAndroid) return;
-
-    setState(() {
-      _appleLoading = true;
-      _error = null;
-    });
-
-    try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: const [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-      final identityToken = credential.identityToken;
-      if (identityToken == null || identityToken.isEmpty) {
-        throw Exception('Apple token topilmadi');
-      }
-      final fullName = [
-        credential.givenName,
-        credential.familyName,
-      ].where((part) => (part ?? '').trim().isNotEmpty).join(' ');
-      final session = await ApiClient.appleLogin(
-        identityToken: identityToken,
-        email: credential.email,
-        fullName: fullName,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop(session);
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (!mounted) return;
-      if (e.code == AuthorizationErrorCode.canceled) {
-        setState(() => _appleLoading = false);
-        return;
-      }
-      setState(() => _error = e.message);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => _appleLoading = false);
       }
     }
   }
@@ -309,7 +260,6 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
-    final showAppleButton = Platform.isIOS;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -624,13 +574,6 @@ class _AuthPageState extends State<AuthPage> {
                                 ),
                               ),
                             ),
-                            if (showAppleButton) ...[
-                              const SizedBox(height: 14),
-                              _AppleButton(
-                                loading: _appleLoading,
-                                onPressed: _appleLoading ? null : _appleLogin,
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -798,45 +741,6 @@ class _ModeTab extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AppleButton extends StatelessWidget {
-  const _AppleButton({required this.loading, required this.onPressed});
-
-  final bool loading;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF111827),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        icon: loading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.apple_rounded, size: 22),
-        label: const Text(
-          'Apple orqali kirish',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
     );
