@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_colors.dart';
+import '../l10n/app_strings.dart';
 
 class QuestionPageSettings {
   const QuestionPageSettings({
@@ -52,6 +53,8 @@ Future<void> showQuestionPageSettingsSheet({
     useSafeArea: false,
     backgroundColor: Colors.transparent,
     builder: (sheetContext) {
+      final strings = AppStrings.of(sheetContext);
+      final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
       var shuffleEnabled = shuffleQuestions;
       var autoAdvanceEnabled = autoAdvance;
 
@@ -61,9 +64,25 @@ Future<void> showQuestionPageSettingsSheet({
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surface : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.border.withValues(alpha: 0.85)
+                  : AppColors.border.withValues(alpha: 0.65),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? const Color(0xAA000000)
+                    : const Color(0x14000000),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
           ),
           child: StatefulBuilder(
             builder: (context, setModalState) {
@@ -98,8 +117,8 @@ Future<void> showQuestionPageSettingsSheet({
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Sozlamalar',
+                  Text(
+                    strings.t('settings_title'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -109,10 +128,12 @@ Future<void> showQuestionPageSettingsSheet({
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FD),
+                      color: isDark ? AppColors.surfaceSoft : const Color(0xFFF8F9FD),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.75),
+                        color: isDark
+                            ? AppColors.border.withValues(alpha: 0.9)
+                            : AppColors.border.withValues(alpha: 0.75),
                       ),
                     ),
                     child: Column(
@@ -123,16 +144,16 @@ Future<void> showQuestionPageSettingsSheet({
                               horizontal: 14,
                               vertical: 4,
                             ),
-                            title: const Text(
-                              'Testlarni aralashtirish',
+                            title: Text(
+                              strings.t('shuffle_questions_title'),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.text,
                               ),
                             ),
-                            subtitle: const Text(
-                              'Har safar savollar tartibi aralashadi.',
+                            subtitle: Text(
+                              strings.t('shuffle_questions_subtitle'),
                               style: TextStyle(
                                 fontSize: 12.5,
                                 color: AppColors.textMuted,
@@ -152,16 +173,16 @@ Future<void> showQuestionPageSettingsSheet({
                             horizontal: 14,
                             vertical: 4,
                           ),
-                          title: const Text(
-                            "Avtomatik o'tish",
+                          title: Text(
+                            strings.t('auto_advance_title'),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: AppColors.text,
                             ),
                           ),
-                          subtitle: const Text(
-                            'Javob tanlanganda keyingi savolga o‘tadi.',
+                          subtitle: Text(
+                            strings.t('auto_advance_subtitle'),
                             style: TextStyle(
                               fontSize: 12.5,
                               color: AppColors.textMuted,
@@ -174,14 +195,14 @@ Future<void> showQuestionPageSettingsSheet({
                     ),
                   ),
                   const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: const Text('Yopish'),
-                    ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: Text(strings.t('close')),
                   ),
+                ),
                 ],
               );
             },

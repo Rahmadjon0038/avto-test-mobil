@@ -9,6 +9,21 @@ class AuthSession {
   final String? refreshToken;
   final Map<String, dynamic> user;
 
+  bool get isAdmin {
+    final candidates = <dynamic>[
+      user['is_admin'],
+      user['isAdmin'],
+      user['admin'],
+      user['adm'],
+    ];
+    for (final candidate in candidates) {
+      if (candidate == true) return true;
+      if (candidate is String && candidate.trim().toLowerCase() == 'true') return true;
+      if (candidate is num && candidate != 0) return true;
+    }
+    return false;
+  }
+
   String get userName {
     final candidates = <String?>[
       user['fullName']?.toString(),

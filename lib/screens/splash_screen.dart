@@ -43,7 +43,7 @@ class SplashScreen extends StatelessWidget {
                 child: Image.asset('assets/logo.png', fit: BoxFit.contain),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Topshirdi',
                 style: TextStyle(
                   fontSize: 28,

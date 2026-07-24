@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
+import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/exam_question.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../services/offline_cache_store.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class ExamPage extends StatefulWidget {
@@ -40,6 +43,7 @@ class _ExamPageState extends State<ExamPage> {
   bool _submitting = false;
   String? _loadError;
   DateTime? _expiresAt;
+  String? _languageCode;
 
   ExamQuestion? get _currentQuestion =>
       _currentIndex >= 0 && _currentIndex < _questions.length
@@ -52,6 +56,18 @@ class _ExamPageState extends State<ExamPage> {
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
+    _bootstrapExam();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    _timer?.cancel();
+    _autoNextTimer?.cancel();
     _bootstrapExam();
   }
 
@@ -144,6 +160,12 @@ class _ExamPageState extends State<ExamPage> {
               )
               .toList()
         : <ExamQuestion>[];
+
+    unawaited(
+      OfflineCacheStore.prefetchAudioUrls(
+        audioUrls: questions.map((question) => question.audio),
+      ),
+    );
 
     final rawAnswers = exam['answers'];
     final answers = <String, int>{};
@@ -329,7 +351,9 @@ class _ExamPageState extends State<ExamPage> {
     final serverScore =
         int.tryParse(response['score']?.toString() ?? '') ?? _countCorrect();
     final correct = serverScore;
-    final wrong = total > correct ? total - correct : 0;
+    final answered = _answers.length > total ? total : _answers.length;
+    final unanswered = total > answered ? total - answered : 0;
+    final wrong = answered > correct ? answered - correct : 0;
     final percent = total > 0 ? ((correct / total) * 100).round() : 0;
 
     setState(() {
@@ -339,67 +363,15 @@ class _ExamPageState extends State<ExamPage> {
       _score = correct;
     });
 
-    await showModalBottomSheet<void>(
+    await showQuestionResultModal(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: false,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return MediaQuery.removePadding(
-          context: context,
-          removeBottom: true,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Natija',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _ResultRow(label: 'To‘g‘ri javoblar', value: '$correct'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Noto‘g‘ri javoblar', value: '$wrong'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Jami savollar', value: '$total'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Foiz', value: '$percent%'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Yopish'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      correct: correct,
+      wrong: wrong,
+      total: total,
+      unanswered: unanswered,
+      percent: percent,
+      onClose: () async {},
+      popPageOnClose: true,
     );
   }
 
@@ -417,8 +389,8 @@ class _ExamPageState extends State<ExamPage> {
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
             ),
             child: Column(
@@ -436,8 +408,8 @@ class _ExamPageState extends State<ExamPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Imtihon yakunlangan',
+                Text(
+                  AppStrings.of(context).t('exam_finished_sheet_title'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -445,8 +417,8 @@ class _ExamPageState extends State<ExamPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'Bu imtihon allaqachon tugagan. Davom etish uchun uni qayta boshlang.',
+                Text(
+                  AppStrings.of(context).t('exam_finished_sheet_subtitle'),
                   style: TextStyle(
                     fontSize: 13.5,
                     height: 1.4,
@@ -462,7 +434,7 @@ class _ExamPageState extends State<ExamPage> {
                       Navigator.of(sheetContext).pop();
                       await _restartExam();
                     },
-                    child: const Text('Imtihonni qayta boshlash'),
+                    child: Text(AppStrings.of(context).t('exam_restart_button')),
                   ),
                 ),
               ],
@@ -496,15 +468,7 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   String _questionImageUrl(ExamQuestion question) {
-    final image = question.image.trim();
-    if (image.isEmpty) return 'assets/default.png';
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image;
-    }
-    if (image.startsWith('/')) {
-      return '$apiBaseUrl$image';
-    }
-    return 'assets/default.png';
+    return resolveQuestionImageUrl(question.image);
   }
 
   Widget _buildQuestionImage(ExamQuestion question) {
@@ -613,6 +577,7 @@ class _ExamPageState extends State<ExamPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final question = _currentQuestion;
     final locked = _locked;
 
@@ -632,16 +597,16 @@ class _ExamPageState extends State<ExamPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : _sessionExpired
                 ? _CenteredMessage(
-                    title: 'Sessiya tugadi',
-                    subtitle: 'Qayta kirish kerak.',
-                    actionText: 'Ortga qaytish',
+                    title: strings.t('session_ended_title'),
+                    subtitle: strings.t('session_ended_subtitle'),
+                    actionText: strings.t('exam_session_ended_action'),
                     onPressed: () => Navigator.of(context).pop(),
                   )
                 : _loadError != null && _questions.isEmpty
                 ? _CenteredMessage(
-                    title: 'Imtihon yuklanmadi',
+                    title: strings.t('not_loaded_title'),
                     subtitle: _loadError!,
-                    actionText: 'Qayta urinib ko‘rish',
+                    actionText: strings.t('exam_load_failed_action'),
                     onPressed: _bootstrapExam,
                   )
                 : Column(
@@ -650,7 +615,7 @@ class _ExamPageState extends State<ExamPage> {
                       Row(
                         children: [
                           Material(
-                            color: Colors.white,
+                            color: AppColors.surface,
                             shape: const CircleBorder(),
                             child: InkWell(
                               onTap: () => Navigator.of(context).pop(),
@@ -667,8 +632,8 @@ class _ExamPageState extends State<ExamPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Imtihon topshirish',
+                                Text(
+                                  strings.t('exam_title'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -679,8 +644,8 @@ class _ExamPageState extends State<ExamPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_currentIndex + 1}/${_questions.length} savol',
-                                  style: const TextStyle(
+                                  '${_currentIndex + 1}/${_questions.length} ${strings.t('question_suffix')}',
+                                  style: TextStyle(
                                     fontSize: 12.5,
                                     color: AppColors.textMuted,
                                     fontWeight: FontWeight.w600,
@@ -699,7 +664,7 @@ class _ExamPageState extends State<ExamPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF7F8FB),
+                            color: AppColors.surfaceSoft,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: AppColors.border.withValues(alpha: 0.7),
@@ -713,9 +678,9 @@ class _ExamPageState extends State<ExamPage> {
                                   children: [
                                     Text(
                                       _completed
-                                          ? 'Imtihon yakunlandi'
-                                          : 'Vaqt tugadi',
-                                      style: const TextStyle(
+                                          ? strings.t('exam_finished')
+                                          : strings.t('session_ended'),
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.text,
@@ -723,8 +688,8 @@ class _ExamPageState extends State<ExamPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'To‘g‘ri javoblar: $_score/${_questions.length}',
-                                      style: const TextStyle(
+                                      '${strings.t('result_correct')}: $_score/${_questions.length}',
+                                      style: TextStyle(
                                         fontSize: 12.5,
                                         color: AppColors.textMuted,
                                       ),
@@ -744,7 +709,7 @@ class _ExamPageState extends State<ExamPage> {
                                       horizontal: 12,
                                     ),
                                   ),
-                                  child: const Text('Yangi imtihon'),
+                                  child: Text(strings.t('exam_new_test')),
                                 ),
                               ),
                             ],
@@ -854,7 +819,7 @@ class _ExamPageState extends State<ExamPage> {
                                         width: double.infinity,
                                         padding: const EdgeInsets.all(18),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: AppColors.surface,
                                           borderRadius: BorderRadius.circular(
                                             22,
                                           ),
@@ -877,7 +842,7 @@ class _ExamPageState extends State<ExamPage> {
                                           children: [
                                             Text(
                                               question.text,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 15,
                                                 height: 1.28,
                                                 fontWeight: FontWeight.w800,
@@ -916,10 +881,10 @@ class _ExamPageState extends State<ExamPage> {
                                                   ? const Color(0xFFCFF0D9)
                                                   : selected
                                                   ? const Color(0xFFF4C5C5)
-                                                  : Colors.white
+                                                  : AppColors.surface
                                             : selected
                                             ? AppColors.surfaceTint
-                                            : Colors.white;
+                                            : AppColors.surface;
                                         final borderColor = showResult
                                             ? isCorrect
                                                   ? const Color(0xFF6CBF86)
@@ -941,7 +906,7 @@ class _ExamPageState extends State<ExamPage> {
                                             bottom: 10,
                                           ),
                                           child: Material(
-                                            color: Colors.white,
+                                            color: AppColors.surface,
                                             borderRadius: BorderRadius.circular(
                                               18,
                                             ),
@@ -991,9 +956,8 @@ class _ExamPageState extends State<ExamPage> {
                                                             ? const Color(
                                                                 0xFFD64545,
                                                               )
-                                                            : const Color(
-                                                                0xFFE9EDF6,
-                                                              ),
+                                                            : AppColors
+                                                                  .surfaceSoft,
                                                         shape: BoxShape.circle,
                                                       ),
                                                       child: Icon(
@@ -1091,59 +1055,17 @@ class _TimerChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
+        color: AppColors.surfaceSoft,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
       ),
       child: Text(
         '$minutes:$seconds',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w800,
           color: AppColors.text,
         ),
-      ),
-    );
-  }
-}
-
-class _ResultRow extends StatelessWidget {
-  const _ResultRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1174,10 +1096,10 @@ class _CenteredMessage extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFECEB),
+                color: AppColors.surfaceSoft,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.flag_rounded,
                 color: AppColors.danger,
                 size: 34,
@@ -1187,7 +1109,7 @@ class _CenteredMessage extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
@@ -1197,7 +1119,7 @@ class _CenteredMessage extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: AppColors.textMuted,

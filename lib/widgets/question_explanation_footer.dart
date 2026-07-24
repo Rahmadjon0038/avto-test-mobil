@@ -5,10 +5,29 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_colors.dart';
 import '../core/app_constants.dart';
+import '../l10n/app_strings.dart';
+import '../services/api_client.dart';
+import '../services/offline_cache_store.dart';
+
+class QuestionAudioAdminContext {
+  const QuestionAudioAdminContext({
+    required this.accessToken,
+    required this.sourceKind,
+    required this.sourceId,
+    required this.questionId,
+  });
+
+  final String accessToken;
+  final String sourceKind;
+  final String sourceId;
+  final String questionId;
+}
 
 class QuestionExplanationFooter extends StatelessWidget {
   const QuestionExplanationFooter({
@@ -17,6 +36,8 @@ class QuestionExplanationFooter extends StatelessWidget {
     required this.correctAnswer,
     required this.explanation,
     required this.audioUrl,
+    this.audioAdminContext,
+    this.onAudioChanged,
     this.showExplanationActions = true,
     this.onFinish,
     this.onRestart,
@@ -32,6 +53,8 @@ class QuestionExplanationFooter extends StatelessWidget {
   final String correctAnswer;
   final String explanation;
   final String audioUrl;
+  final QuestionAudioAdminContext? audioAdminContext;
+  final ValueChanged<String?>? onAudioChanged;
   final bool showExplanationActions;
   final VoidCallback? onFinish;
   final VoidCallback? onRestart;
@@ -44,8 +67,12 @@ class QuestionExplanationFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final hasTextExplanation = explanation.trim().isNotEmpty;
     final hasAudio = audioUrl.trim().isNotEmpty;
+    final canOpenAudio = hasAudio || audioAdminContext != null;
+    final effectiveFinishLabel =
+        finishLabel == 'Yakunlash' ? strings.t('finish') : finishLabel;
 
     return SafeArea(
       top: false,
@@ -57,7 +84,8 @@ class QuestionExplanationFooter extends StatelessWidget {
               Expanded(
                 child: _ActionChip(
                   icon: Icons.description_outlined,
-                  label: 'Izoh',
+                  label: strings.t('explanation'),
+                  isAudio: false,
                   onTap: hasTextExplanation
                       ? () {
                           showQuestionTextExplanationSheet(
@@ -72,12 +100,15 @@ class QuestionExplanationFooter extends StatelessWidget {
               Expanded(
                 child: _ActionChip(
                   icon: Icons.volume_up_outlined,
-                  label: 'Audio',
-                  onTap: hasAudio
+                  label: strings.t('audio'),
+                  isAudio: true,
+                  onTap: canOpenAudio
                       ? () {
                           showQuestionAudioExplanationSheet(
                             context: context,
                             audioUrl: audioUrl,
+                            adminContext: audioAdminContext,
+                            onAudioChanged: onAudioChanged,
                           );
                         }
                       : null,
@@ -94,7 +125,7 @@ class QuestionExplanationFooter extends StatelessWidget {
                   icon: Icon(finishIcon, size: 16),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(finishLabel, maxLines: 1),
+                    child: Text(effectiveFinishLabel, maxLines: 1),
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: finishColor,
@@ -128,23 +159,25 @@ class _ActionChip extends StatelessWidget {
   const _ActionChip({
     required this.icon,
     required this.label,
+    required this.isAudio,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final bool isAudio;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    final backgroundColor = label == 'Audio'
+    final backgroundColor = isAudio
         ? const Color(0xFF2E1F63)
         : const Color(0xFF0D4FC9);
-    final borderColor = label == 'Audio'
+    final borderColor = isAudio
         ? const Color(0xFF5A3FC0)
         : const Color(0xFF3B79E8);
-    final iconColor = label == 'Audio' ? Colors.white : Colors.white;
+    final iconColor = Colors.white;
     final textColor = Colors.white;
 
     return Material(
@@ -152,11 +185,11 @@ class _ActionChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
-        child: AnimatedOpacity(
+          child: AnimatedOpacity(
           duration: const Duration(milliseconds: 180),
           opacity: enabled ? 1 : 0.42,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
             constraints: const BoxConstraints(minHeight: 42),
             decoration: BoxDecoration(
               color: backgroundColor,
@@ -167,15 +200,20 @@ class _ActionChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 17, color: iconColor),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
+                Icon(icon, size: 16, color: iconColor),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
                   ),
                 ),
               ],
@@ -225,10 +263,11 @@ Future<void> showQuestionTextExplanationSheet({
   required BuildContext context,
   required String explanation,
 }) {
+  final strings = AppStrings.of(context);
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Dismiss',
+    barrierLabel: strings.t('dismiss'),
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 140),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
@@ -251,8 +290,8 @@ Future<void> showQuestionTextExplanationSheet({
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(28),
                     ),
@@ -271,7 +310,7 @@ Future<void> showQuestionTextExplanationSheet({
                               width: 42,
                               height: 5,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFD8DFEA),
+                                color: AppColors.border,
                                 borderRadius: BorderRadius.circular(99),
                               ),
                             ),
@@ -280,14 +319,14 @@ Future<void> showQuestionTextExplanationSheet({
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.description_outlined,
                               color: AppColors.primary,
                               size: 20,
                             ),
                             const SizedBox(width: 7),
-                            const Text(
-                              'Izoh',
+                            Text(
+                              strings.t('explanation'),
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
@@ -298,7 +337,10 @@ Future<void> showQuestionTextExplanationSheet({
                             IconButton(
                               onPressed: () =>
                                   Navigator.of(dialogContext).pop(),
-                              icon: const Icon(Icons.close_rounded),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: AppColors.text,
+                              ),
                             ),
                           ],
                         ),
@@ -306,8 +348,8 @@ Future<void> showQuestionTextExplanationSheet({
                         Text(
                           explanation.trim().isNotEmpty
                               ? explanation
-                              : 'Izoh mavjud emas',
-                          style: const TextStyle(
+                              : strings.t('no_explanation'),
+                          style: TextStyle(
                             fontSize: 14.5,
                             height: 1.45,
                             color: AppColors.text,
@@ -329,11 +371,14 @@ Future<void> showQuestionTextExplanationSheet({
 Future<void> showQuestionAudioExplanationSheet({
   required BuildContext context,
   required String audioUrl,
+  QuestionAudioAdminContext? adminContext,
+  ValueChanged<String?>? onAudioChanged,
 }) {
+  final strings = AppStrings.of(context);
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Dismiss',
+    barrierLabel: strings.t('dismiss'),
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 140),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
@@ -350,7 +395,11 @@ Future<void> showQuestionAudioExplanationSheet({
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: _AudioExplanationSheet(audioUrl: audioUrl),
+              child: _AudioExplanationSheet(
+                audioUrl: audioUrl,
+                adminContext: adminContext,
+                onAudioChanged: onAudioChanged,
+              ),
             ),
           ],
         ),
@@ -366,6 +415,9 @@ Future<void> showTestLockedRestartSheet({
   required Future<void> Function() onRestart,
   String restartLabel = 'Qayta boshlash',
 }) {
+  final strings = AppStrings.of(context);
+  final effectiveRestartLabel =
+      restartLabel == 'Qayta boshlash' ? strings.t('restart') : restartLabel;
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -377,8 +429,8 @@ Future<void> showTestLockedRestartSheet({
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: Column(
@@ -398,7 +450,7 @@ Future<void> showTestLockedRestartSheet({
               const SizedBox(height: 16),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.text,
@@ -407,7 +459,7 @@ Future<void> showTestLockedRestartSheet({
               const SizedBox(height: 10),
               Text(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.5,
                   height: 1.4,
                   color: AppColors.textMuted,
@@ -422,7 +474,7 @@ Future<void> showTestLockedRestartSheet({
                     Navigator.of(sheetContext).pop();
                     await onRestart();
                   },
-                  child: Text(restartLabel),
+                  child: Text(effectiveRestartLabel),
                 ),
               ),
             ],
@@ -434,9 +486,15 @@ Future<void> showTestLockedRestartSheet({
 }
 
 class _AudioExplanationSheet extends StatefulWidget {
-  const _AudioExplanationSheet({required this.audioUrl});
+  const _AudioExplanationSheet({
+    required this.audioUrl,
+    this.adminContext,
+    this.onAudioChanged,
+  });
 
   final String audioUrl;
+  final QuestionAudioAdminContext? adminContext;
+  final ValueChanged<String?>? onAudioChanged;
 
   @override
   State<_AudioExplanationSheet> createState() => _AudioExplanationSheetState();
@@ -444,18 +502,28 @@ class _AudioExplanationSheet extends StatefulWidget {
 
 class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
   late final AudioPlayer _player;
+  final AudioRecorder _recorder = AudioRecorder();
   File? _tempAudioFile;
+  String? _recordedAudioPath;
+  String _currentAudioUrl = '';
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  Duration _recordDuration = Duration.zero;
   PlayerState _playerState = PlayerState.stopped;
   bool _loading = true;
   bool _pluginUnavailable = false;
+  bool _recording = false;
+  bool _uploading = false;
+  bool _deleting = false;
   String? _error;
+  Timer? _recordTimer;
+  DateTime? _recordStartedAt;
 
   @override
   void initState() {
     super.initState();
     _player = AudioPlayer();
+    _currentAudioUrl = widget.audioUrl.trim();
     _player.onDurationChanged.listen((duration) {
       if (!mounted) return;
       setState(() => _duration = duration);
@@ -472,12 +540,17 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
   }
 
   Future<void> _load() async {
+    if (_currentAudioUrl.isEmpty) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      return;
+    }
     try {
-      final source = await _prepareAudioSource(widget.audioUrl);
+      final source = await _prepareAudioSource(_currentAudioUrl);
       if (source == null) {
         throw Exception('Audio manzili topilmadi');
       }
-      _tempAudioFile = source.file;
+      _tempAudioFile = source.temporary ? source.file : null;
       await _player.setSourceDeviceFile(
         source.file.path,
         mimeType: source.mimeType,
@@ -492,6 +565,12 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
         _error =
             'Audio player bu qurilmada ishga tushmadi. Ilovani to‘liq qayta ishga tushiring yoki tashqaridan oching.';
       });
+    } on SocketException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = AppStrings.of(context).t('internet_required');
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -504,6 +583,8 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
   @override
   void dispose() {
     final tempFile = _tempAudioFile;
+    final draftPath = _recordedAudioPath;
+    _recordTimer?.cancel();
     if (tempFile != null) {
       unawaited(() async {
         try {
@@ -511,12 +592,24 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
         } catch (_) {}
       }());
     }
+    if (draftPath != null && draftPath.isNotEmpty) {
+      unawaited(() async {
+        try {
+          await File(draftPath).parent.delete(recursive: true);
+        } catch (_) {}
+      }());
+    }
     _player.dispose();
+    unawaited(_recorder.dispose());
     super.dispose();
   }
 
+  bool get _isAdmin => widget.adminContext != null;
+  bool get _hasPlayableAudio =>
+      _recordedAudioPath != null || _currentAudioUrl.isNotEmpty;
+
   Future<void> _togglePlay() async {
-    if (_loading || _error != null) return;
+    if (_loading || _error != null || !_hasPlayableAudio) return;
     if (_playerState == PlayerState.playing) {
       await _player.pause();
       return;
@@ -524,14 +617,220 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
     await _player.resume();
   }
 
+  String _formatClock(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _loadFromPath(String path) async {
+    await _player.stop();
+    await _player.setSourceDeviceFile(path, mimeType: 'audio/mp4');
+    if (!mounted) return;
+    setState(() {
+      _duration = Duration.zero;
+      _position = Duration.zero;
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  void _startRecordTimer() {
+    _recordTimer?.cancel();
+    _recordStartedAt = DateTime.now();
+    _recordDuration = Duration.zero;
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || !_recording || _recordStartedAt == null) return;
+      setState(() {
+        _recordDuration = DateTime.now().difference(_recordStartedAt!);
+      });
+    });
+  }
+
+  Future<void> _startRecording() async {
+    if (!_isAdmin || _recording || _uploading || _deleting) return;
+    try {
+      final hasPermission = await _recorder.hasPermission();
+      if (!hasPermission) {
+        if (!mounted) return;
+        setState(() {
+          _error =
+              'Mikrofondan foydalanish uchun ruxsat bering. Qurilma sozlamalaridan audio ruxsatini yoqing.';
+        });
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final dir = Directory(
+        '${tempDir.path}/topshirdi_admin_audio_${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await dir.create(recursive: true);
+      final path = '${dir.path}/audio.m4a';
+
+      await _player.stop();
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 44100,
+        ),
+        path: path,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _recording = true;
+        _recordedAudioPath = path;
+        _loading = false;
+        _error = null;
+        _recordDuration = Duration.zero;
+      });
+      _startRecordTimer();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _error = _formatAudioError(e);
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _stopRecordingAndUpload() async {
+    if (!_recording) return;
+    try {
+      _recordTimer?.cancel();
+      _recordTimer = null;
+      final path = await _recorder.stop();
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _loading = false;
+        if (path != null && path.isNotEmpty) {
+          _recordedAudioPath = path;
+        }
+      });
+      final draftPath = _recordedAudioPath;
+      if (draftPath != null && draftPath.isNotEmpty) {
+        await _loadFromPath(draftPath);
+        await _uploadRecordedAudio();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _error = _formatAudioError(e);
+      });
+    }
+  }
+
+  Future<void> _uploadRecordedAudio() async {
+    final adminContext = widget.adminContext;
+    final draftPath = _recordedAudioPath;
+    if (adminContext == null || draftPath == null || draftPath.isEmpty) return;
+    if (_recording || _uploading || _deleting) return;
+
+    try {
+      setState(() {
+        _uploading = true;
+        _error = null;
+      });
+      final uploadedUrl = await ApiClient.uploadQuestionAudio(
+        accessToken: adminContext.accessToken,
+        audioPath: draftPath,
+        audioName: 'question_${DateTime.now().millisecondsSinceEpoch}.m4a',
+        sourceKind: adminContext.sourceKind,
+        sourceId: adminContext.sourceId,
+        questionId: adminContext.questionId,
+        oldAudioUrl: _currentAudioUrl,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentAudioUrl = uploadedUrl;
+        _recordedAudioPath = null;
+        _recordDuration = Duration.zero;
+      });
+      widget.onAudioChanged?.call(uploadedUrl);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _formatAudioError(e);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteAudio() async {
+    final adminContext = widget.adminContext;
+    if (adminContext == null) return;
+    if (_recording || _uploading || _deleting) return;
+    if (_currentAudioUrl.isEmpty && _recordedAudioPath == null) return;
+
+    try {
+      setState(() {
+        _deleting = true;
+        _error = null;
+      });
+
+      if (_currentAudioUrl.isNotEmpty) {
+        await ApiClient.deleteQuestionAudio(
+          accessToken: adminContext.accessToken,
+          sourceKind: adminContext.sourceKind,
+          sourceId: adminContext.sourceId,
+          questionId: adminContext.questionId,
+          audioUrl: _currentAudioUrl,
+        );
+      }
+
+      final draftPath = _recordedAudioPath;
+      if (draftPath != null && draftPath.isNotEmpty) {
+        try {
+          await File(draftPath).delete();
+        } catch (_) {}
+      }
+
+      await _player.stop();
+      if (!mounted) return;
+      setState(() {
+        _currentAudioUrl = '';
+        _recordedAudioPath = null;
+        _recordDuration = Duration.zero;
+        _duration = Duration.zero;
+        _position = Duration.zero;
+        _playerState = PlayerState.stopped;
+        _loading = false;
+      });
+      widget.onAudioChanged?.call('');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _formatAudioError(e);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _deleting = false;
+        });
+      }
+    }
+  }
+
   Future<void> _openExternally() async {
-    final uri = Uri.tryParse(_resolveDirectAudioUrl(widget.audioUrl));
+    final uri = Uri.tryParse(_resolveDirectAudioUrl(_currentAudioUrl));
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final progress = _duration.inMilliseconds == 0
         ? 0.0
         : (_position.inMilliseconds / _duration.inMilliseconds)
@@ -544,8 +843,8 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
       removeBottom: true,
       child: Container(
         padding: const EdgeInsets.only(bottom: 30),
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Padding(
@@ -565,7 +864,7 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                       width: 38,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD8DFEA),
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -575,14 +874,14 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.volume_up_outlined,
                     color: AppColors.primary,
                     size: 18,
                   ),
                   const SizedBox(width: 7),
-                  const Text(
-                    'Audio izoh',
+                  Text(
+                    strings.t('audio_explanation'),
                     style: TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
@@ -590,10 +889,26 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                     ),
                   ),
                   const Spacer(),
-                  if (!_loading && _error == null)
+                  if (_isAdmin)
+                    Text(
+                      _recording
+                          ? 'Yozilmoqda'
+                          : _recordedAudioPath != null
+                          ? 'Qoralama'
+                          : _currentAudioUrl.isNotEmpty
+                          ? 'Mavjud'
+                          : 'Yangi',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  if (!_loading && _error == null && _hasPlayableAudio)
                     Text(
                       _formatDuration(_duration),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
                         fontWeight: FontWeight.w700,
@@ -607,7 +922,7 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                       height: 34,
                     ),
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, size: 20),
+                    icon: Icon(Icons.close_rounded, size: 20),
                   ),
                 ],
               ),
@@ -617,9 +932,11 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFEDEE),
+                    color: AppColors.danger.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF1B7B7)),
+                    border: Border.all(
+                      color: AppColors.danger.withValues(alpha: 0.30),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,8 +944,8 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                     children: [
                       Text(
                         _error!,
-                        style: const TextStyle(
-                          color: Color(0xFFB03A3A),
+                        style: TextStyle(
+                          color: AppColors.danger,
                           height: 1.4,
                         ),
                       ),
@@ -639,7 +956,7 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                           height: 38,
                           child: FilledButton.tonal(
                             onPressed: _openExternally,
-                            child: const Text('Tashqarida ochish'),
+                            child: Text(strings.t('open_external')),
                           ),
                         ),
                       ],
@@ -647,85 +964,197 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
                   ),
                 )
               else
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7F8FB),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: AppColors.border.withValues(alpha: 0.8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSoft,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_hasPlayableAudio) ...[
+                            Row(
+                              children: [
+                                Text(
+                                  _formatDuration(_position),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${strings.t('remaining')} ${_formatDuration(remaining)}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 0),
+                            Slider(
+                              value: progress,
+                              activeColor: AppColors.primary,
+                              onChanged: _duration.inMilliseconds == 0
+                                  ? null
+                                  : (value) async {
+                                      final newPosition = Duration(
+                                        milliseconds:
+                                            (_duration.inMilliseconds * value)
+                                                .round(),
+                                      );
+                                      await _player.seek(newPosition);
+                                    },
+                            ),
+                            const SizedBox(height: 2),
+                            SizedBox(
+                              width: 46,
+                              height: 46,
+                              child: _loading
+                                  ? Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    )
+                                  : FilledButton(
+                                      onPressed: _togglePlay,
+                                      style: FilledButton.styleFrom(
+                                        shape: const CircleBorder(),
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                      child: Icon(
+                                        _playerState == PlayerState.playing
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        size: 22,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                            ),
+                          ] else if (_isAdmin) ...[
+                            Text(
+                              'Hali audio yo‘q. Mikrofon bilan yozib qo‘shishingiz mumkin.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              strings.t('no_explanation'),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                    if (_isAdmin) ...[
+                      const SizedBox(height: 10),
                       Row(
                         children: [
-                          Text(
-                            _formatDuration(_position),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textMuted,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_recording)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 2,
+                                      bottom: 6,
+                                    ),
+                                    child: Text(
+                                      _formatClock(_recordDuration),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                GestureDetector(
+                                  onLongPressStart: (_) => _startRecording(),
+                                  onLongPressEnd: (_) =>
+                                      _stopRecordingAndUpload(),
+                                  onLongPressCancel: () =>
+                                      _stopRecordingAndUpload(),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: _recording
+                                          ? const Color(0xFFE25555)
+                                          : AppColors.primary,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        _recording
+                                            ? Icons.mic_none_rounded
+                                            : Icons.mic_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const Spacer(),
-                          Text(
-                            'Qolgan ${_formatDuration(remaining)}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textMuted,
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: FilledButton.tonal(
+                              onPressed:
+                                  (_currentAudioUrl.isNotEmpty ||
+                                          _recordedAudioPath != null) &&
+                                      !_recording &&
+                                      !_uploading
+                                  ? _deleteAudio
+                                  : null,
+                              style: FilledButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: _deleting
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.delete_outline_rounded),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 0),
-                      Slider(
-                        value: progress,
-                        activeColor: AppColors.primary,
-                        onChanged: _duration.inMilliseconds == 0
-                            ? null
-                            : (value) async {
-                                final newPosition = Duration(
-                                  milliseconds:
-                                      (_duration.inMilliseconds * value)
-                                          .round(),
-                                );
-                                await _player.seek(newPosition);
-                              },
-                      ),
-                      const SizedBox(height: 2),
-                      SizedBox(
-                        width: 46,
-                        height: 46,
-                        child: _loading
-                            ? const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                ),
-                              )
-                            : FilledButton(
-                                onPressed: _togglePlay,
-                                style: FilledButton.styleFrom(
-                                  shape: const CircleBorder(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                                child: Icon(
-                                  _playerState == PlayerState.playing
-                                      ? Icons.pause_rounded
-                                      : Icons.play_arrow_rounded,
-                                  size: 22,
-                                ),
-                              ),
-                      ),
                     ],
-                  ),
+                  ],
                 ),
             ],
           ),
@@ -743,10 +1172,15 @@ class _AudioExplanationSheetState extends State<_AudioExplanationSheet> {
 }
 
 class _PreparedAudioSource {
-  const _PreparedAudioSource({required this.file, required this.mimeType});
+  const _PreparedAudioSource({
+    required this.file,
+    required this.mimeType,
+    required this.temporary,
+  });
 
   final File file;
   final String? mimeType;
+  final bool temporary;
 }
 
 String _formatAudioError(Object error) {
@@ -821,50 +1255,83 @@ List<String> _audioUrlCandidates(String audioUrl) {
 }
 
 Future<_PreparedAudioSource?> _prepareAudioSource(String audioUrl) async {
+  final cacheEnabled = OfflineCacheStore.appConfig?.audioOfflineCache != false;
+  if (cacheEnabled) {
+    final cached = await OfflineCacheStore.resolveAudio(audioUrl);
+    if (cached != null) {
+      return _PreparedAudioSource(
+        file: cached.file,
+        mimeType: cached.mimeType,
+        temporary: false,
+      );
+    }
+  }
+
+  return _downloadAudioSource(audioUrl, cacheEnabled: cacheEnabled);
+}
+
+Future<_PreparedAudioSource?> _downloadAudioSource(
+  String audioUrl, {
+  required bool cacheEnabled,
+}) async {
   final candidates = _audioUrlCandidates(audioUrl);
   if (candidates.isEmpty) return null;
 
   Object? lastError;
   for (final candidate in candidates) {
     try {
-      final uri = Uri.tryParse(candidate);
-      if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) {
-        throw Exception('Audio manzili noto‘g‘ri');
+      if (!cacheEnabled) {
+        final uri = Uri.tryParse(candidate);
+        if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) {
+          throw Exception('Audio manzili noto‘g‘ri');
+        }
+
+        final response = await http.get(
+          uri,
+          headers: const {
+            'Accept': 'audio/*, application/octet-stream, */*',
+            'User-Agent': 'TopshirdiMobile/1.0',
+          },
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception('Audio yuklab bo‘lmadi: ${response.statusCode}');
+        }
+
+        final bytes = response.bodyBytes;
+        if (bytes.isEmpty) {
+          throw Exception('Audio fayli bo‘sh');
+        }
+
+        final contentType = _normalizeContentType(
+          response.headers['content-type'],
+        );
+        final mimeType = contentType.isNotEmpty
+            ? contentType
+            : _mimeTypeFromAudioUrl(candidate) ??
+                  _mimeTypeFromAudioUrl(audioUrl) ??
+                  'audio/mp4';
+        final mimeExtension = _extensionFromMimeType(mimeType);
+        final extension = mimeExtension.isNotEmpty
+            ? mimeExtension
+            : _extensionFromUrl(candidate);
+        final tempDir = await Directory.systemTemp.createTemp('topshirdi_audio_');
+        final file = File('${tempDir.path}/audio.$extension');
+        await file.writeAsBytes(bytes, flush: true);
+        return _PreparedAudioSource(
+          file: file,
+          mimeType: mimeType,
+          temporary: true,
+        );
       }
-
-      final response = await http.get(
-        uri,
-        headers: const {
-          'Accept': 'audio/*, application/octet-stream, */*',
-          'User-Agent': 'TopshirdiMobile/1.0',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Audio yuklab bo‘lmadi: ${response.statusCode}');
+      final cache = await OfflineCacheStore.cacheAudio(candidate);
+      if (cache != null) {
+        return _PreparedAudioSource(
+          file: cache.file,
+          mimeType: cache.mimeType,
+          temporary: false,
+        );
       }
-
-      final bytes = response.bodyBytes;
-      if (bytes.isEmpty) {
-        throw Exception('Audio fayli bo‘sh');
-      }
-
-      final contentType = _normalizeContentType(
-        response.headers['content-type'],
-      );
-      final mimeType = contentType.isNotEmpty
-          ? contentType
-          : _mimeTypeFromAudioUrl(candidate) ??
-                _mimeTypeFromAudioUrl(audioUrl) ??
-                'audio/mp4';
-      final mimeExtension = _extensionFromMimeType(mimeType);
-      final extension = mimeExtension.isNotEmpty
-          ? mimeExtension
-          : _extensionFromUrl(candidate);
-      final tempDir = await Directory.systemTemp.createTemp('topshirdi_audio_');
-      final file = File('${tempDir.path}/audio.$extension');
-      await file.writeAsBytes(bytes, flush: true);
-      return _PreparedAudioSource(file: file, mimeType: mimeType);
     } catch (error) {
       lastError = error;
     }

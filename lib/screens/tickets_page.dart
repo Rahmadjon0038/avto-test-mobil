@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
 import '../models/ticket_summary.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../services/ticket_test_progress_store.dart';
+import '../utils/friendly_error_message.dart';
 import 'ticket_test_page.dart';
 
 class TicketsPage extends StatefulWidget {
-  const TicketsPage({
-    super.key,
-    required this.session,
-    this.onSessionUpdated,
-  });
+  const TicketsPage({super.key, required this.session, this.onSessionUpdated});
 
   final AuthSession session;
   final ValueChanged<AuthSession>? onSessionUpdated;
@@ -21,26 +20,54 @@ class TicketsPage extends StatefulWidget {
 }
 
 class _TicketsPageState extends State<TicketsPage> {
-  late Future<List<TicketSummary>> _ticketsFuture;
+  late Future<_TicketsLoadResult> _ticketsFuture;
   late String _accessToken;
+  String? _languageCode;
 
   @override
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
     _ticketsFuture = _loadTickets();
   }
 
-  Future<List<TicketSummary>> _loadTickets() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    setState(() {
+      _ticketsFuture = _loadTickets();
+    });
+  }
+
+  Future<_TicketsLoadResult> _loadTickets() async {
     try {
-      return await ApiClient.tickets(_accessToken);
+      final tickets = await ApiClient.tickets(_accessToken);
+      final progress = await TicketTestProgressStore.loadAll();
+      return _TicketsLoadResult(
+        tickets: tickets,
+        progressByTicketId: {
+          for (final entry in progress.entries)
+            if (entry.value.result != null) entry.key: entry.value.result!,
+        },
+      );
     } on ApiException catch (error) {
-      if (error.statusCode != 401 || widget.session.refreshToken == null || widget.session.refreshToken!.isEmpty) {
+      if (error.statusCode != 401 ||
+          widget.session.refreshToken == null ||
+          widget.session.refreshToken!.isEmpty) {
         rethrow;
       }
 
       final refreshed = await ApiClient.refresh(widget.session.refreshToken!);
-      if (!mounted) return const <TicketSummary>[];
+      if (!mounted) {
+        return const _TicketsLoadResult(
+          tickets: <TicketSummary>[],
+          progressByTicketId: <String, TicketTestResult>{},
+        );
+      }
       final active = refreshed.copyWith(user: widget.session.user);
 
       setState(() {
@@ -48,7 +75,15 @@ class _TicketsPageState extends State<TicketsPage> {
       });
       widget.onSessionUpdated?.call(active);
 
-      return ApiClient.tickets(active.accessToken);
+      final tickets = await ApiClient.tickets(active.accessToken);
+      final progress = await TicketTestProgressStore.loadAll();
+      return _TicketsLoadResult(
+        tickets: tickets,
+        progressByTicketId: {
+          for (final entry in progress.entries)
+            if (entry.value.result != null) entry.key: entry.value.result!,
+        },
+      );
     }
   }
 
@@ -65,7 +100,7 @@ class _TicketsPageState extends State<TicketsPage> {
               _TicketsHeader(onBack: () => Navigator.of(context).pop()),
               const SizedBox(height: 18),
               Expanded(
-                child: FutureBuilder<List<TicketSummary>>(
+                child: FutureBuilder<_TicketsLoadResult>(
                   future: _ticketsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -74,7 +109,10 @@ class _TicketsPageState extends State<TicketsPage> {
 
                     if (snapshot.hasError) {
                       return _TicketsError(
-                        message: snapshot.error.toString(),
+                        message: friendlyErrorMessage(
+                          context,
+                          snapshot.error,
+                        ),
                         onRetry: () {
                           setState(() {
                             _ticketsFuture = _loadTickets();
@@ -83,7 +121,13 @@ class _TicketsPageState extends State<TicketsPage> {
                       );
                     }
 
-                    final tickets = snapshot.data ?? const <TicketSummary>[];
+                    final data =
+                        snapshot.data ??
+                        const _TicketsLoadResult(
+                          tickets: <TicketSummary>[],
+                          progressByTicketId: <String, TicketTestResult>{},
+                        );
+                    final tickets = data.tickets;
                     if (tickets.isEmpty) {
                       return const _TicketsEmpty();
                     }
@@ -97,18 +141,26 @@ class _TicketsPageState extends State<TicketsPage> {
                         final ticket = tickets[index];
                         return _TicketCard(
                           ticket: ticket,
+                          progress: data.progressByTicketId[ticket.id],
                           onTap: ticket.locked
                               ? null
-                              : () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => TicketTestPage(
-                                        session: widget.session,
-                                        onSessionUpdated: widget.onSessionUpdated,
-                                        ticket: ticket,
-                                      ),
-                                    ),
-                                  );
+                              : () async {
+                                  final shouldRefresh =
+                                      await Navigator.of(context).push<bool>(
+                                        MaterialPageRoute(
+                                          builder: (_) => TicketTestPage(
+                                            session: widget.session,
+                                            onSessionUpdated:
+                                                widget.onSessionUpdated,
+                                            ticket: ticket,
+                                          ),
+                                        ),
+                                      );
+                                  if (shouldRefresh != false && mounted) {
+                                    setState(() {
+                                      _ticketsFuture = _loadTickets();
+                                    });
+                                  }
                                 },
                         );
                       },
@@ -131,10 +183,11 @@ class _TicketsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Row(
       children: [
         Material(
-          color: Colors.white,
+          color: AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onBack,
@@ -147,8 +200,8 @@ class _TicketsHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Text(
-          'Biletlar',
+        Text(
+          strings.t('tickets'),
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -161,16 +214,17 @@ class _TicketsHeader extends StatelessWidget {
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket, required this.onTap});
+  const _TicketCard({required this.ticket, required this.onTap, this.progress});
 
   final TicketSummary ticket;
   final VoidCallback? onTap;
+  final TicketTestResult? progress;
 
   @override
   Widget build(BuildContext context) {
     final locked = ticket.locked;
     return Material(
-      color: Colors.white,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -178,7 +232,7 @@ class _TicketCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: locked ? const Color(0xFFF6F7FB) : Colors.white,
+            color: locked ? AppColors.surfaceSoft : AppColors.surface,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: locked
@@ -200,15 +254,15 @@ class _TicketCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: locked
-                      ? const Color(0xFFEDEFF6)
-                      : const Color(0xFFEAF1FF),
+                      ? AppColors.surfaceTint
+                      : AppColors.surfaceTint,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   locked ? Icons.lock_rounded : Icons.receipt_long_rounded,
                   color: locked
-                      ? const Color(0xFF8E8E93)
-                      : const Color(0xFF4C8DFF),
+                      ? AppColors.textSoft
+                      : AppColors.primary,
                   size: 23,
                 ),
               ),
@@ -219,28 +273,25 @@ class _TicketCard extends StatelessWidget {
                   children: [
                     Text(
                       ticket.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: AppColors.text,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      locked ? 'Hozircha ochilmagan' : 'Bosib yeching',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
+                    if (progress != null) ...[
+                      const SizedBox(height: 10),
+                      _TicketProgressPreview(progress: progress!),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               Icon(
-                locked ? Icons.lock_outline_rounded : Icons.chevron_right_rounded,
-                color: const Color(0xFFB5B8C0),
+                locked
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                color: AppColors.textSoft,
                 size: 20,
               ),
             ],
@@ -260,14 +311,71 @@ class _TicketsLoader extends StatelessWidget {
   }
 }
 
+class _TicketsLoadResult {
+  const _TicketsLoadResult({
+    required this.tickets,
+    required this.progressByTicketId,
+  });
+
+  final List<TicketSummary> tickets;
+  final Map<String, TicketTestResult> progressByTicketId;
+}
+
+class _TicketProgressPreview extends StatelessWidget {
+  const _TicketProgressPreview({required this.progress});
+
+  final TicketTestResult progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final unanswered = (progress.total - progress.correct - progress.wrong)
+        .clamp(0, progress.total)
+        .toInt();
+    final percent = progress.total <= 0 ? 0 : progress.percent.clamp(0, 100);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${progress.correct} ${strings.t('correct_short')} · ${progress.wrong} ${strings.t('wrong_short')} · $unanswered ${strings.t('unanswered_short')}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11.5,
+            height: 1.25,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            minHeight: 7,
+            value: percent / 100,
+            backgroundColor: AppColors.surfaceSoft,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              percent >= 70
+                  ? const Color(0xFF21A65B)
+                  : percent >= 40
+                  ? const Color(0xFFF0A23A)
+                  : const Color(0xFFD64545),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _TicketsEmpty extends StatelessWidget {
   const _TicketsEmpty();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
-        'Biletlar topilmadi',
+        AppStrings.of(context).t('no_content'),
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
@@ -295,7 +403,7 @@ class _TicketsError extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.danger,
                 fontWeight: FontWeight.w600,
@@ -304,7 +412,7 @@ class _TicketsError extends StatelessWidget {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: onRetry,
-              child: const Text('Qayta urinish'),
+              child: Text(AppStrings.of(context).t('retry_load')),
             ),
           ],
         ),

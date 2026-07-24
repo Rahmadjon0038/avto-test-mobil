@@ -1,31 +1,44 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_colors.dart';
+import '../l10n/app_strings.dart';
 import '../widgets/top_bar.dart';
+import 'language_selection_page.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({
     super.key,
     required this.onLogin,
     required this.onRegister,
+    required this.onLanguageChanged,
   });
 
   final VoidCallback onLogin;
   final VoidCallback onRegister;
+  final ValueChanged<String> onLanguageChanged;
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    const backgroundTop = Color(0xFFF7F9FF);
+    const backgroundBottom = Color(0xFFF7F8FC);
+    const surface = Color(0xFFFFFFFF);
+    const surfaceSoft = Color(0xFFF8F8FA);
+    const border = Color(0xFFD1D1D6);
+    const text = Color(0xFF1C1C1E);
+    const textMuted = Color(0xFF636366);
+    const primary = Color(0xFF007AFF);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundTop,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFF7F9FF),
-              AppColors.background,
-              Color(0xFFF7F8FC),
+              backgroundTop,
+              surfaceSoft,
+              backgroundBottom,
             ],
           ),
         ),
@@ -38,13 +51,21 @@ class LandingScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const TopBar(),
+                      TopBar(
+                        backgroundColor: surface,
+                        borderColor: border,
+                        shadowColor: const Color(0x14000000),
+                        brandColor: primary,
+                        trailing: _LanguageHeaderButton(
+                          onTap: () => _openLanguageSheet(context),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
                         decoration: BoxDecoration(
-                          color: AppColors.surface.withValues(alpha: 0.98),
+                          color: surface,
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: const [
                             BoxShadow(
@@ -65,25 +86,25 @@ class LandingScreen extends StatelessWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        'Haydovchilikka\ntayyormisiz?',
+                                      Text(
+                                        strings.t('hero_ready'),
                                         style: TextStyle(
                                           fontSize: 21,
                                           height: 1.28,
                                           fontWeight: FontWeight.w800,
-                                          color: AppColors.text,
+                                          color: text,
                                           letterSpacing: -0.6,
                                         ),
                                       ),
                                       const SizedBox(height: 16),
-                                      const Padding(
+                                      Padding(
                                         padding: EdgeInsets.only(top: 2),
                                         child: Text(
-                                          'Nazariy bilimlaringizni sinang\nva imtihonga tayyorlaning.',
+                                          strings.t('hero_subtitle'),
                                           style: TextStyle(
                                             fontSize: 13.5,
                                             height: 1.38,
-                                            color: AppColors.textMuted,
+                                            color: textMuted,
                                           ),
                                         ),
                                       ),
@@ -107,9 +128,9 @@ class LandingScreen extends StatelessWidget {
                                   child: SizedBox(
                                     height: 48,
                                     child: FilledButton(
-                                      onPressed: onLogin,
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
+                                        onPressed: onLogin,
+                                        style: FilledButton.styleFrom(
+                                        backgroundColor: primary,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             14,
@@ -117,15 +138,16 @@ class LandingScreen extends StatelessWidget {
                                         ),
                                         elevation: 0,
                                       ),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            'Testlarga kirish',
+                                            strings.t('login_to_tests'),
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w700,
+                                              color: Colors.white,
                                             ),
                                           ),
                                           SizedBox(width: 10),
@@ -135,7 +157,7 @@ class LandingScreen extends StatelessWidget {
                                             child: Icon(
                                               Icons.arrow_forward_rounded,
                                               size: 15,
-                                              color: AppColors.primary,
+                                              color: primary,
                                             ),
                                           ),
                                         ],
@@ -151,77 +173,72 @@ class LandingScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       Column(
                         children: [
-                          _SectionCard(
-                            icon: Icons.description_rounded,
-                            iconColor: const Color(0xFF4C8DFF),
-                            title: 'Mavzu bo‘yicha testlar',
-                            subtitle:
-                                'Belgilar va qoidalarni bo‘limma-bo‘lim o‘rganing.',
+                            _SectionCard(
+                              icon: Icons.description_rounded,
+                              iconColor: const Color(0xFF4C8DFF),
+                            title: strings.t('topics'),
+                            subtitle: strings.t('topics_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.play_circle_fill_rounded,
-                            iconColor: const Color(0xFF8E6BFF),
-                            title: 'Video darsliklar',
-                            subtitle: 'Mavzulashtirilgan video darsliklar.',
+                            _SectionCard(
+                              icon: Icons.play_circle_fill_rounded,
+                              iconColor: const Color(0xFF8E6BFF),
+                            title: strings.t('videos'),
+                            subtitle: strings.t('videos_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.receipt_long_rounded,
-                            iconColor: const Color(0xFF34C759),
-                            title: 'Biletlar bo‘yicha testlar',
-                            subtitle:
-                                'Rasmiy biletlar formatida yechib mashq qiling.',
+                            _SectionCard(
+                              icon: Icons.receipt_long_rounded,
+                              iconColor: const Color(0xFF34C759),
+                            title: strings.t('tickets'),
+                            subtitle: strings.t('tickets_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.local_fire_department_rounded,
-                            iconColor: const Color(0xFFFF6B35),
-                            title: 'Marafon rejimi',
-                            subtitle:
-                                'Uzluksiz savollar: tezlik va aniqlikni oshiring.',
+                            _SectionCard(
+                              icon: Icons.local_fire_department_rounded,
+                              iconColor: const Color(0xFFFF6B35),
+                            title: strings.t('marathon'),
+                            subtitle: strings.t('marathon_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.tune_rounded,
-                            iconColor: const Color(0xFF8E6BFF),
-                            title: 'Sozlamali testlar',
-                            subtitle: 'Savol soni va rejimni o‘zingiz tanlang.',
+                            _SectionCard(
+                              icon: Icons.tune_rounded,
+                              iconColor: const Color(0xFF8E6BFF),
+                            title: strings.t('custom_tests'),
+                            subtitle: strings.t('custom_tests_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.close_rounded,
-                            iconColor: const Color(0xFFEE5A73),
-                            title: 'Mening xatolarim',
-                            subtitle:
-                                'Xato qilgan savollaringizni qayta ko‘rib chiqing.',
+                            _SectionCard(
+                              icon: Icons.close_rounded,
+                              iconColor: const Color(0xFFEE5A73),
+                            title: strings.t('mistakes'),
+                            subtitle: strings.t('mistakes_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.menu_book_rounded,
-                            iconColor: const Color(0xFFF5A623),
-                            title: 'Barcha testlar javoblari',
-                            subtitle:
-                                'To‘g‘ri javoblarni izohlar bilan ko‘ring.',
+                            _SectionCard(
+                              icon: Icons.menu_book_rounded,
+                              iconColor: const Color(0xFFF5A623),
+                            title: strings.t('answers'),
+                            subtitle: strings.t('answers_subtitle'),
                             onTap: onLogin,
                           ),
                           const SizedBox(height: 10),
-                          _SectionCard(
-                            icon: Icons.check_circle_rounded,
-                            iconColor: const Color(0xFF2BBE8A),
-                            title: 'Imtihon topshirish',
-                            subtitle: 'Haqiqiy imtihondek sinovdan o‘ting.',
+                            _SectionCard(
+                              icon: Icons.check_circle_rounded,
+                              iconColor: const Color(0xFF2BBE8A),
+                            title: strings.t('exam'),
+                            subtitle: strings.t('exam_subtitle'),
                             onTap: onLogin,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                        const SizedBox(height: 18),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -246,8 +263,8 @@ class LandingScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Bilimingizni\nsinab ko‘ring!',
+                                  Text(
+                                    strings.t('hero_banner_title'),
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -256,8 +273,8 @@ class LandingScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 10),
-                                  const Text(
-                                    'Test yeching, natijani kuzating\nva reytingda yuqorilang.',
+                                  Text(
+                                    strings.t('hero_banner_subtitle'),
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12.5,
@@ -281,16 +298,17 @@ class LandingScreen extends StatelessWidget {
                                         ),
                                         elevation: 0,
                                       ),
-                                      child: const FittedBox(
+                                      child: FittedBox(
                                         fit: BoxFit.scaleDown,
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              'Boshlash',
+                                              strings.t('hero_cta'),
                                               style: TextStyle(
                                                 fontSize: 14.5,
                                                 fontWeight: FontWeight.w700,
+                                                color: Colors.white,
                                               ),
                                             ),
                                             SizedBox(width: 12),
@@ -312,7 +330,7 @@ class LandingScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Icon(
+                            Icon(
                               Icons.emoji_events_rounded,
                               color: Color(0xFFFFD166),
                               size: 92,
@@ -326,6 +344,67 @@ class LandingScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openLanguageSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Theme(
+          data: ThemeData.light(useMaterial3: true),
+          child: LanguageSelectionPage(
+            compact: true,
+            onSelected: (code) {
+              Navigator.of(sheetContext).pop();
+              onLanguageChanged(code);
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LanguageHeaderButton extends StatelessWidget {
+  const _LanguageHeaderButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 32,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEAF4FF), Color(0xFFDDEBFF)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFB7D2FF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x142E7BFF),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: const Icon(
+          Icons.language_rounded,
+          size: 20,
+          color: Color(0xFF2F80ED),
         ),
       ),
     );
@@ -349,8 +428,12 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const surface = Color(0xFFFFFFFF);
+    const border = Color(0xFFD1D1D6);
+    const text = Color(0xFF1C1C1E);
+    const textMuted = Color(0xFF636366);
     return Material(
-      color: Colors.white,
+      color: surface,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -358,9 +441,9 @@ class _SectionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
+            border: Border.all(color: border.withValues(alpha: 0.75)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x08000000),
@@ -388,27 +471,27 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 1.2,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.text,
+                        color: text,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         height: 1.25,
-                        color: AppColors.textMuted,
+                        color: textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 color: Color(0xFFB5B8C0),
                 size: 20,
