@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../core/app_colors.dart';
@@ -6,7 +9,7 @@ import '../core/app_colors.dart';
 class PrivacyPolicyPage extends StatefulWidget {
   const PrivacyPolicyPage({
     super.key,
-    this.url = 'https://road-test.uz/privacy',
+    this.url = 'https://topshirdi.uz/privacy',
     this.title = 'Maxfiylik siyosati',
   });
 
@@ -18,13 +21,19 @@ class PrivacyPolicyPage extends StatefulWidget {
 }
 
 class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _loading = true;
   bool _usingFallback = false;
+  final bool _macOSFallback = Platform.isMacOS;
 
   @override
   void initState() {
     super.initState();
+    if (_macOSFallback) {
+      _loading = false;
+      return;
+    }
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
@@ -40,13 +49,13 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                 error.response?.statusCode == 403 ||
                 error.response?.statusCode == 500) {
               _usingFallback = true;
-              await _controller.loadHtmlString(_fallbackHtml());
+              await _controller?.loadHtmlString(_fallbackHtml());
             }
           },
           onWebResourceError: (_) async {
             if (!mounted || _usingFallback) return;
             _usingFallback = true;
-            await _controller.loadHtmlString(_fallbackHtml());
+            await _controller?.loadHtmlString(_fallbackHtml());
           },
         ),
       )
@@ -55,12 +64,64 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_macOSFallback) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: Text(widget.title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.policy_outlined, size: 64, color: AppColors.primary),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Maxfiylik siyosati macOS brauzerida ochiladi.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Davom etish uchun brauzerda ochish tugmasini bosing.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await launchUrl(
+                        Uri.parse(widget.url),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('Brauzerda ochish'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text(widget.title)),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          WebViewWidget(controller: _controller!),
           if (_loading)
             const Positioned.fill(
               child: ColoredBox(
@@ -81,7 +142,7 @@ String _fallbackHtml() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maxfiylik siyosati - Road Test</title>
+  <title>Maxfiylik siyosati - Topshirdi</title>
   <style>
     :root { color-scheme: light dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f8fc; color: #1f2937; }
@@ -104,13 +165,13 @@ String _fallbackHtml() {
   <div class="wrap">
     <div class="hero">
       <h1>Maxfiylik siyosati</h1>
-      <p>Road Test foydalanuvchi ma'lumotlarini qanday yig'ishi, ishlatishi va himoya qilishini tushuntiradi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini qanday yig'ishi, ishlatishi va himoya qilishini tushuntiradi.</p>
       <div class="pill">Oxirgi yangilanish: 2026-06-14</div>
     </div>
 
     <div class="card">
       <h2>1. Yig'iladigan ma'lumotlar</h2>
-      <p>Road Test quyidagi ma'lumotlarni yig'ishi mumkin:</p>
+      <p>Topshirdi quyidagi ma'lumotlarni yig'ishi mumkin:</p>
       <ul>
         <li>Ism</li>
         <li>Email manzil</li>
@@ -134,13 +195,13 @@ String _fallbackHtml() {
 
     <div class="card">
       <h2>3. Ma'lumot ulashish</h2>
-      <p>Road Test foydalanuvchi ma'lumotlarini sotmaydi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini sotmaydi.</p>
       <p>Ma'lumotlar qonun talab qilgan holatlardan tashqari uchinchi tomonlarga berilmaydi.</p>
     </div>
 
     <div class="card">
       <h2>4. Xavfsizlik</h2>
-      <p>Road Test foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
+      <p>Topshirdi foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
     </div>
 
     <div class="card">
@@ -159,13 +220,13 @@ String _fallbackHtml() {
 
     <div class="card">
       <h2>7. Siyosat o'zgarishlari</h2>
-      <p>Road Test ushbu maxfiylik siyosatini kelajakda yangilashi mumkin.</p>
+      <p>Topshirdi ushbu maxfiylik siyosatini kelajakda yangilashi mumkin.</p>
     </div>
 
     <div class="card footer">
       <h2>Aloqa</h2>
-      <p><a href="mailto:support@road-test.uz">support@road-test.uz</a></p>
-      <p><a href="https://road-test.uz">https://road-test.uz</a></p>
+      <p><a href="mailto:support@topshirdi.uz">support@topshirdi.uz</a></p>
+      <p><a href="https://topshirdi.uz">https://topshirdi.uz</a></p>
       <p class="muted">Agar asosiy sahifa javob bermasa, ushbu ichki variant ko'rsatiladi.</p>
     </div>
   </div>

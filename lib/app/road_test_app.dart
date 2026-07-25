@@ -12,14 +12,14 @@ import '../screens/landing_screen.dart';
 import '../screens/splash_screen.dart';
 import '../services/api_client.dart';
 
-class RoadTestApp extends StatefulWidget {
-  const RoadTestApp({super.key});
+class TopshirdiApp extends StatefulWidget {
+  const TopshirdiApp({super.key});
 
   @override
-  State<RoadTestApp> createState() => _RoadTestAppState();
+  State<TopshirdiApp> createState() => _TopshirdiAppState();
 }
 
-class _RoadTestAppState extends State<RoadTestApp> {
+class _TopshirdiAppState extends State<TopshirdiApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   AuthSession? _session;
   bool _loading = true;
@@ -149,11 +149,11 @@ class _RoadTestAppState extends State<RoadTestApp> {
     _passwordChangePromptShown = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _openPasswordChangeDialog();
+      _openPasswordChangeDialog(forceReset: true);
     });
   }
 
-  Future<void> _openPasswordChangeDialog() async {
+  Future<void> _openPasswordChangeDialog({bool forceReset = false}) async {
     final current = _session;
     if (current == null) return;
 
@@ -163,9 +163,12 @@ class _RoadTestAppState extends State<RoadTestApp> {
 
     final changed = await showDialog<bool>(
       context: rootContext,
-      barrierDismissible: false,
+      barrierDismissible: !forceReset,
       builder: (dialogContext) {
-        return _PasswordChangeDialog(accessToken: current.accessToken);
+        return _PasswordChangeDialog(
+          accessToken: current.accessToken,
+          forceReset: forceReset,
+        );
       },
     );
 
@@ -188,7 +191,7 @@ class _RoadTestAppState extends State<RoadTestApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: _navigatorKey,
-      title: 'Road Test Mobil Ilova',
+      title: 'Topshirdi Mobil Ilova',
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
@@ -291,9 +294,13 @@ class _ChangePasswordField extends StatelessWidget {
 }
 
 class _PasswordChangeDialog extends StatefulWidget {
-  const _PasswordChangeDialog({required this.accessToken});
+  const _PasswordChangeDialog({
+    required this.accessToken,
+    this.forceReset = false,
+  });
 
   final String accessToken;
+  final bool forceReset;
 
   @override
   State<_PasswordChangeDialog> createState() => _PasswordChangeDialogState();
@@ -323,7 +330,7 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
     final confirmPassword = _confirmPasswordController.text.trim();
 
     final messenger = ScaffoldMessenger.maybeOf(context);
-    if (currentPassword.isEmpty) {
+    if (!widget.forceReset && currentPassword.isEmpty) {
       messenger?.showSnackBar(
         const SnackBar(content: Text('Eski parolni kiriting')),
       );
@@ -348,7 +355,7 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
     try {
       await ApiClient.changePassword(
         accessToken: widget.accessToken,
-        currentPassword: currentPassword,
+        currentPassword: widget.forceReset ? null : currentPassword,
         newPassword: newPassword,
       );
       if (!mounted) return;
@@ -427,30 +434,33 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: _loading
-                        ? null
-                        : () => Navigator.of(context).pop(false),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
+                  if (!widget.forceReset)
+                    IconButton(
+                      onPressed: _loading
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
-              _ChangePasswordField(
-                controller: _currentPasswordController,
-                label: 'Eski parol',
-                obscureText: _obscure,
-                suffix: IconButton(
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    color: AppColors.textMuted,
+              if (!widget.forceReset) ...[
+                _ChangePasswordField(
+                  controller: _currentPasswordController,
+                  label: 'Eski parol',
+                  obscureText: _obscure,
+                  suffix: IconButton(
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               _ChangePasswordField(
                 controller: _newPasswordController,
                 label: 'Yangi parol',
@@ -521,6 +531,5 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
     );
   }
 }
-
 
 // salom

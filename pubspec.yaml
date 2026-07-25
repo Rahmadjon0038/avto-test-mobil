@@ -1,7 +1,7 @@
 name: avto_test_mobil
-description: "Road Test mobil ilovasi"
+description: "Topshirdi mobil ilovasi"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.10.0
@@ -11,7 +11,6 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.4.0
-  google_sign_in: ^6.3.0
   sign_in_with_apple: ^6.1.4
   url_launcher: ^6.3.1
   shared_preferences: ^2.5.3
