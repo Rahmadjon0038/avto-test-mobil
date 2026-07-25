@@ -8,7 +8,9 @@ import '../core/app_colors.dart';
 import '../models/auth_session.dart';
 import '../models/topic_summary.dart';
 import '../models/video_lesson.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../utils/friendly_error_message.dart';
 import 'topic_test_page.dart';
 
 const Map<String, String> _videoRequestHeaders = <String, String>{
@@ -76,6 +78,7 @@ class _VideosPageState extends State<VideosPage> {
             id: video.topicId,
             title: video.topicTitle,
             completed: false,
+            questionCount: 0,
           ),
           onSessionUpdated: widget.onSessionUpdated,
         ),
@@ -140,21 +143,49 @@ class _VideosPageState extends State<VideosPage> {
       }
       if (!mounted) return;
       setState(() {
-        _playbackError = error.message;
+        _playbackError = friendlyErrorMessage(
+          context,
+          error.message,
+          fallbackKey: 'video_failed',
+        );
         _loadingPlayback = false;
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            friendlyErrorMessage(
+              context,
+              error.message,
+              fallbackKey: 'video_failed',
+            ),
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _playbackError = error.toString();
+        _playbackError = friendlyErrorMessage(
+          context,
+          error,
+          fallbackKey: 'video_failed',
+        );
         _loadingPlayback = false;
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            friendlyErrorMessage(
+              context,
+              error,
+              fallbackKey: 'video_failed',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -179,7 +210,11 @@ class _VideosPageState extends State<VideosPage> {
                     }
                     if (snapshot.hasError) {
                       return _VideosError(
-                        message: snapshot.error.toString(),
+                        message: friendlyErrorMessage(
+                          context,
+                          snapshot.error,
+                          fallbackKey: 'video_failed',
+                        ),
                         onRetry: () {
                           setState(() {
                             _videosFuture = _loadVideos();
@@ -230,10 +265,11 @@ class _VideosHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Row(
       children: [
         Material(
-          color: Colors.white,
+          color: AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onBack,
@@ -246,9 +282,9 @@ class _VideosHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Expanded(
+        Expanded(
           child: Text(
-            'Video darsliklar',
+            strings.t('video_title'),
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -397,36 +433,36 @@ class _VideoCardState extends State<_VideoCard> {
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
-                                      color: const Color(0xFFEAF1FF),
+                                      color: AppColors.surfaceTint,
                                       alignment: Alignment.center,
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.play_circle_fill_rounded,
-                                        color: Color(0xFF4C8DFF),
+                                        color: AppColors.primary,
                                         size: 64,
                                       ),
                                     );
-                                  },
-                                )
+                                },
+                              )
                               else
                                 Container(
-                                  color: const Color(0xFFEAF1FF),
+                                  color: AppColors.surfaceTint,
                                   alignment: Alignment.center,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.play_circle_fill_rounded,
-                                    color: Color(0xFF4C8DFF),
+                                    color: AppColors.primary,
                                     size: 64,
                                   ),
                                 ),
                               Container(
                                 color: Colors.black.withValues(alpha: 0.12),
                               ),
-                              const Center(
+                              Center(
                                 child: CircleAvatar(
                                   radius: 29,
-                                  backgroundColor: Colors.white,
+                                  backgroundColor: AppColors.surface,
                                   child: Icon(
                                     Icons.play_arrow_rounded,
-                                    color: Color(0xFF4C8DFF),
+                                    color: AppColors.primary,
                                     size: 30,
                                   ),
                                 ),
@@ -451,7 +487,7 @@ class _VideoCardState extends State<_VideoCard> {
                             : widget.video.topicTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16.8,
                           height: 1.24,
                           fontWeight: FontWeight.w800,
@@ -460,7 +496,7 @@ class _VideoCardState extends State<_VideoCard> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.textMuted,
                       size: 28,
@@ -478,16 +514,16 @@ class _VideoCardState extends State<_VideoCard> {
   Widget _buildPlayer() {
     if (widget.playbackError.isNotEmpty) {
       return Container(
-        color: const Color(0xFF0B1220),
+        color: AppColors.surfaceSoft,
         alignment: Alignment.center,
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Video ochilmadi',
+            Text(
+              AppStrings.of(context).t('video_failed'),
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.text,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -495,7 +531,7 @@ class _VideoCardState extends State<_VideoCard> {
             Text(
               widget.playbackError,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
         ),
@@ -504,12 +540,15 @@ class _VideoCardState extends State<_VideoCard> {
 
     if (widget.loadingPlayback || widget.playbackUrl.isEmpty) {
       return Container(
-        color: const Color(0xFF0B1220),
+        color: AppColors.surfaceSoft,
         alignment: Alignment.center,
-        child: const SizedBox(
+        child: SizedBox(
           width: 28,
           height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.4),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.4,
+            color: AppColors.primary,
+          ),
         ),
       );
     }
@@ -521,23 +560,26 @@ class _VideoCardState extends State<_VideoCard> {
         builder: (context, snapshot) {
           if (_error) {
             return Container(
-              color: const Color(0xFF0B1220),
+              color: AppColors.surfaceSoft,
               alignment: Alignment.center,
               padding: const EdgeInsets.all(16),
-              child: const Text(
-                'Video ochilmadi',
-                style: TextStyle(color: Colors.white),
+              child: Text(
+                AppStrings.of(context).t('video_failed'),
+                style: TextStyle(color: AppColors.text),
               ),
             );
           }
           if (_chewieController == null || !_ready) {
             return Container(
-              color: const Color(0xFF0B1220),
+              color: AppColors.surfaceSoft,
               alignment: Alignment.center,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 28,
                 height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.4),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: AppColors.primary,
+                ),
               ),
             );
           }
@@ -567,12 +609,12 @@ class _VideosError extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.danger),
+              style: TextStyle(color: AppColors.danger),
             ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: onRetry,
-              child: const Text('Qayta urinish'),
+              child: Text(AppStrings.of(context).t('videos_retry')),
             ),
           ],
         ),
@@ -586,9 +628,9 @@ class _VideosEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
-        'Hozircha video darslar yo‘q',
+        AppStrings.of(context).t('videos_empty'),
         style: TextStyle(color: AppColors.textMuted),
       ),
     );

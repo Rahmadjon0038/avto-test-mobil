@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
+import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../services/offline_cache_store.dart';
 import '../services/question_page_settings_store.dart';
+import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class TopicTestPage extends StatefulWidget {
@@ -34,8 +40,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
   bool _resultShown = false;
   bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
+  final Map<String, String> _audioOverrides = {};
   late AuthSession _activeSession;
   late String _accessToken;
+  String? _languageCode;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _questionCardKey = GlobalKey();
 
@@ -44,16 +52,39 @@ class _TopicTestPageState extends State<TopicTestPage> {
     super.initState();
     _activeSession = widget.session;
     _accessToken = _activeSession.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
     _questionsFuture = _loadQuestions();
     _loadSettings();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    setState(() {
+      _questionsFuture = _loadQuestions();
+      _answers.clear();
+      _currentIndex = 0;
+      _selectedIndex = null;
+      _resultShown = false;
+      _loadedQuestions = null;
+    });
+  }
+
   Future<List<TopicQuestion>> _loadQuestions() async {
     try {
-      return await ApiClient.topicQuestions(
+      final questions = await ApiClient.topicQuestions(
         accessToken: _accessToken,
         topicId: widget.topic.id,
       );
+      unawaited(
+        OfflineCacheStore.prefetchAudioUrls(
+          audioUrls: questions.map((question) => question.audio),
+        ),
+      );
+      return questions;
     } on ApiException catch (error) {
       final refreshToken = _activeSession.refreshToken;
       if (error.statusCode != 401 ||
@@ -70,10 +101,16 @@ class _TopicTestPageState extends State<TopicTestPage> {
         _accessToken = active.accessToken;
       });
       widget.onSessionUpdated?.call(active);
-      return ApiClient.topicQuestions(
+      final questions = await ApiClient.topicQuestions(
         accessToken: active.accessToken,
         topicId: widget.topic.id,
       );
+      unawaited(
+        OfflineCacheStore.prefetchAudioUrls(
+          audioUrls: questions.map((question) => question.audio),
+        ),
+      );
+      return questions;
     }
   }
 
@@ -82,6 +119,22 @@ class _TopicTestPageState extends State<TopicTestPage> {
     if (!mounted) return;
     setState(() {
       _autoAdvanceEnabled = settings.autoAdvance;
+    });
+  }
+
+  String _audioUrlForQuestion(TopicQuestion question) {
+    return _audioOverrides[question.id] ?? question.audio;
+  }
+
+  void _updateQuestionAudio(String questionId, String? audioUrl) {
+    if (!mounted) return;
+    setState(() {
+      final value = audioUrl?.trim() ?? '';
+      if (value.isEmpty) {
+        _audioOverrides.remove(questionId);
+      } else {
+        _audioOverrides[questionId] = value;
+      }
     });
   }
 
@@ -138,7 +191,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                     Row(
                       children: [
                         Material(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           shape: const CircleBorder(),
                           child: InkWell(
                             onTap: () => Navigator.of(context).pop(),
@@ -159,7 +212,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                 widget.topic.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.text,
@@ -168,7 +221,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                               const SizedBox(height: 4),
                               Text(
                                 '${_currentIndex + 1}/${questions.length} savol',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12.5,
                                   color: AppColors.textMuted,
                                   fontWeight: FontWeight.w600,
@@ -227,7 +280,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(22),
                                 border: Border.all(
                                   color: AppColors.border.withValues(
@@ -247,7 +300,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                 children: [
                                   Text(
                                     question.text,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
                                       height: 1.28,
                                       fontWeight: FontWeight.w800,
@@ -277,10 +330,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                         ? const Color(0xFFCFF0D9)
                                         : selected
                                         ? const Color(0xFFF4C5C5)
-                                        : Colors.white
+                                        : AppColors.surface
                                   : selected
                                   ? AppColors.surfaceTint
-                                  : Colors.white;
+                                  : AppColors.surface;
                               final borderColor = showResult
                                   ? isCorrect
                                         ? const Color(0xFF6CBF86)
@@ -296,7 +349,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: Material(
-                                  color: Colors.white,
+                                  color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(18),
                                   child: InkWell(
                                     onTap: locked
@@ -337,7 +390,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
                                                   ? const Color(0xFF21A65B)
                                                   : showResult && selected
                                                   ? const Color(0xFFD64545)
-                                                  : const Color(0xFFE9EDF6),
+                                                  : AppColors.surfaceSoft,
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -392,7 +445,18 @@ class _TopicTestPageState extends State<TopicTestPage> {
                           ? question.options.first
                           : '',
                       explanation: question.explanation,
-                      audioUrl: question.audio,
+                      audioUrl: _audioUrlForQuestion(question),
+                      audioAdminContext: widget.session.isAdmin
+                          ? QuestionAudioAdminContext(
+                              accessToken: _accessToken,
+                              sourceKind: 'topic',
+                              sourceId: widget.topic.id.toString(),
+                              questionId: question.id,
+                            )
+                          : null,
+                      onAudioChanged: (updatedUrl) {
+                        _updateQuestionAudio(question.id, updatedUrl);
+                      },
                       onFinish: locked
                           ? () => _showLockedRestartModal()
                           : () => _finishNow(questions),
@@ -409,15 +473,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
   }
 
   String _questionImageUrl(TopicQuestion question) {
-    final image = question.image.trim();
-    if (image.isEmpty) return 'assets/default.png';
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image;
-    }
-    if (image.startsWith('/')) {
-      return '$apiBaseUrl$image';
-    }
-    return 'assets/default.png';
+    return resolveQuestionImageUrl(question.image);
   }
 
   Widget _buildQuestionImage(TopicQuestion question) {
@@ -582,7 +638,17 @@ class _TopicTestPageState extends State<TopicTestPage> {
         if (!silent && mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(error.message)));
+          ).showSnackBar(
+            SnackBar(
+              content: Text(
+                friendlyErrorMessage(
+                  context,
+                  error.message,
+                  fallbackKey: 'load_failed',
+                ),
+              ),
+            ),
+          );
         }
         return;
       }
@@ -603,7 +669,17 @@ class _TopicTestPageState extends State<TopicTestPage> {
       if (!silent && mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(
+              friendlyErrorMessage(
+                context,
+                error,
+                fallbackKey: 'load_failed',
+              ),
+            ),
+          ),
+        );
       }
     }
   }
@@ -632,67 +708,17 @@ class _TopicTestPageState extends State<TopicTestPage> {
     required int total,
     required int percent,
   }) {
-    return showModalBottomSheet<void>(
+    final answered = _answers.where((answer) => answer != null).length;
+    final unanswered = (total - answered).clamp(0, total);
+    return showQuestionResultModal(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: false,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return MediaQuery.removePadding(
-          context: context,
-          removeBottom: true,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Natija',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _ResultRow(label: 'To‘g‘ri javoblar', value: '$correct'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Noto‘g‘ri javoblar', value: '$wrong'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Jami savollar', value: '$total'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Foiz', value: '$percent%'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Yopish'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      correct: correct,
+      wrong: wrong,
+      total: total,
+      unanswered: unanswered,
+      percent: percent,
+      onClose: () {},
+      popPageOnClose: true,
     );
   }
 
@@ -773,8 +799,9 @@ class _SettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
     return Material(
-      color: AppColors.surface,
+      color: isDark ? AppColors.surfaceSoft : AppColors.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -786,7 +813,7 @@ class _SettingsButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
           ),
-          child: const Icon(Icons.settings_outlined, size: 22),
+          child: Icon(Icons.settings_outlined, size: 22, color: AppColors.text),
         ),
       ),
     );
@@ -871,47 +898,6 @@ class _QuestionNavigator extends StatelessWidget {
   }
 }
 
-class _ResultRow extends StatelessWidget {
-  const _ResultRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
@@ -938,10 +924,10 @@ class _EmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFECEB),
+                color: AppColors.surfaceSoft,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.menu_book_rounded,
                 color: AppColors.danger,
                 size: 34,
@@ -951,7 +937,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
@@ -961,7 +947,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: AppColors.textMuted,

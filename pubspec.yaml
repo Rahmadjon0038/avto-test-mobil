@@ -1,7 +1,7 @@
 name: avto_test_mobil
 description: "Topshirdi mobil ilovasi"
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.10.0
@@ -11,10 +11,12 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.4.0
-  sign_in_with_apple: ^6.1.4
+  package_info_plus: ^10.2.1
   url_launcher: ^6.3.1
   shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
   audioplayers: ^6.4.0
+  record: ^6.2.1
   video_player: ^2.9.5
   chewie: ^1.8.5
   webview_flutter: ^4.13.0

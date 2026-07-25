@@ -1,14 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
 import '../core/app_constants.dart';
+import '../l10n/app_strings.dart';
+import '../models/app_bootstrap.dart';
 import '../models/auth_session.dart';
+import '../models/custom_test_progress_summary.dart';
 import '../models/mistake_question.dart';
+import '../models/topic_progress_summary.dart';
 import '../models/video_lesson.dart';
 import '../models/topic_question.dart';
 import '../models/topic_summary.dart';
 import '../models/ticket_summary.dart';
+import 'offline_cache_store.dart';
 
 class ApiException implements Exception {
   ApiException(this.statusCode, this.message);
@@ -21,12 +27,37 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  static String _langParam() {
+    final code = AppLanguageStore.currentCode;
+    return code.isEmpty ? AppLanguageStore.uzLatn : code;
+  }
+
+  static Uri _uri(String path, {Map<String, String>? queryParameters}) {
+    final params = <String, String>{...?queryParameters, 'lang': _langParam()};
+    return Uri.parse('$apiBaseUrl$path').replace(queryParameters: params);
+  }
+
   static Map<String, String> _jsonHeaders({String? accessToken}) {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (accessToken != null && accessToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $accessToken';
     }
     return headers;
+  }
+
+  static List<Map<String, dynamic>> _mapsFromJsonList(dynamic value) {
+    if (value is! List) return const <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static List<T> _mapModels<T>(
+    List<Map<String, dynamic>> value,
+    T Function(Map<String, dynamic>) factory,
+  ) {
+    return value.map(factory).toList();
   }
 
   static String? _extractRefreshToken(http.Response response) {
@@ -83,41 +114,6 @@ class ApiClient {
     }
     return AuthSession(
       accessToken: accessToken,
-      refreshToken: _extractRefreshToken(response),
-      user: Map<String, dynamic>.from(user),
-    );
-  }
-
-  static Future<AuthSession> appleLogin({
-    required String identityToken,
-    String? email,
-    String? fullName,
-    String? accessToken,
-  }) async {
-    final authHeaders = _jsonHeaders(accessToken: accessToken);
-    final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/auth/apple'),
-      headers: authHeaders,
-      body: jsonEncode({
-        'identityToken': identityToken,
-        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
-        if (fullName != null && fullName.trim().isNotEmpty)
-          'fullName': fullName.trim(),
-      }),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw Exception(
-        body['error']?.toString() ?? 'Apple orqali kirish amalga oshmadi',
-      );
-    }
-    final nextAccessToken = body['accessToken']?.toString();
-    final user = body['user'];
-    if (nextAccessToken == null || nextAccessToken.isEmpty || user is! Map) {
-      throw Exception('Noto‘g‘ri javob keldi');
-    }
-    return AuthSession(
-      accessToken: nextAccessToken,
       refreshToken: _extractRefreshToken(response),
       user: Map<String, dynamic>.from(user),
     );
@@ -204,112 +200,309 @@ class ApiClient {
   }
 
   static Future<List<TopicSummary>> topics(String accessToken) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/topics'),
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Mavzular yuklanmadi',
+    final lang = _langParam();
+    try {
+      final response = await http.get(
+        _uri('/api/topics'),
+        headers: _jsonHeaders(accessToken: accessToken),
       );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Mavzular yuklanmadi',
+        );
+      }
+      final rawTopics = _mapsFromJsonList(body['topics']);
+      if (rawTopics.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'topics',
+          id: 'list',
+          lang: lang,
+          questions: rawTopics,
+        );
+      }
+      return _mapModels(rawTopics, TopicSummary.fromJson);
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'topics',
+        id: 'list',
+        lang: lang,
+      );
+      if (cached != null) return _mapModels(cached, TopicSummary.fromJson);
+      rethrow;
     }
-    final rawTopics = body['topics'];
-    if (rawTopics is! List) return const [];
-    return rawTopics
-        .whereType<Map>()
-        .map((topic) => TopicSummary.fromJson(Map<String, dynamic>.from(topic)))
-        .toList();
   }
 
   static Future<List<TicketSummary>> tickets(String accessToken) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/tickets'),
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Biletlar yuklanmadi',
+    final lang = _langParam();
+    try {
+      final response = await http.get(
+        _uri('/api/tickets'),
+        headers: _jsonHeaders(accessToken: accessToken),
       );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Biletlar yuklanmadi',
+        );
+      }
+      final rawTickets = _mapsFromJsonList(body['tickets']);
+      if (rawTickets.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'tickets',
+          id: 'list',
+          lang: lang,
+          questions: rawTickets,
+        );
+      }
+      return _mapModels(rawTickets, TicketSummary.fromJson);
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'tickets',
+        id: 'list',
+        lang: lang,
+      );
+      if (cached != null) return _mapModels(cached, TicketSummary.fromJson);
+      rethrow;
     }
-    final rawTickets = body['tickets'];
-    if (rawTickets is! List) return const [];
-    return rawTickets
-        .whereType<Map>()
-        .map(
-          (ticket) => TicketSummary.fromJson(Map<String, dynamic>.from(ticket)),
-        )
-        .toList();
   }
 
   static Future<List<TicketSummary>> customTests(String accessToken) async {
+    final lang = _langParam();
+    try {
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/api/custom-tests'),
+        headers: _jsonHeaders(accessToken: accessToken),
+      );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Sozlamali testlar yuklanmadi',
+        );
+      }
+      final rawTests = _mapsFromJsonList(body['customTests']);
+      if (rawTests.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'custom-tests',
+          id: 'list',
+          lang: lang,
+          questions: rawTests,
+        );
+      }
+      return _mapModels(rawTests, TicketSummary.fromJson);
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'custom-tests',
+        id: 'list',
+        lang: lang,
+      );
+      if (cached != null) return _mapModels(cached, TicketSummary.fromJson);
+      rethrow;
+    }
+  }
+
+  static Future<CustomTestProgressSummary?> customTestProgress({
+    required String accessToken,
+    required String testId,
+  }) async {
     final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/custom-tests'),
+      Uri.parse('$apiBaseUrl/api/custom-test-progress/$testId'),
       headers: _jsonHeaders(accessToken: accessToken),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
       throw ApiException(
         response.statusCode,
-        body['error']?.toString() ?? 'Sozlamali testlar yuklanmadi',
+        body['error']?.toString() ?? 'Progress yuklanmadi',
       );
     }
-    final rawTests = body['customTests'];
-    if (rawTests is! List) return const [];
-    return rawTests
-        .whereType<Map>()
-        .map((test) => TicketSummary.fromJson(Map<String, dynamic>.from(test)))
-        .toList();
+    final progress = body['progress'];
+    if (progress is! Map) return null;
+    return CustomTestProgressSummary.fromJson(
+      Map<String, dynamic>.from(progress),
+    );
   }
 
   static Future<List<VideoLesson>> videos(String accessToken) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/video-lessons'),
+    try {
+      final response = await http.get(
+        _uri('/api/video-lessons'),
+        headers: _jsonHeaders(accessToken: accessToken),
+      );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Video darslar yuklanmadi',
+        );
+      }
+      final rawVideos = _mapsFromJsonList(body['videos']);
+      return _mapModels(rawVideos, VideoLesson.fromJson);
+    } on SocketException {
+      throw ApiException(
+        503,
+        'Video darslar uchun internet kerak. Ushbu bo‘lim oflayn ishlamaydi.',
+      );
+    }
+  }
+
+  static Future<AppBootstrapConfig> appConfig() async {
+    final response = await http.get(_uri('/api/public/app-config'));
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Ilova sozlamalari yuklanmadi',
+      );
+    }
+    final config = body['appConfig'];
+    if (config is! Map) {
+      throw ApiException(500, 'Ilova sozlamalari topilmadi');
+    }
+    return AppBootstrapConfig.fromJson(Map<String, dynamic>.from(config));
+  }
+
+  static Future<OfflineManifest> offlineManifest() async {
+    final response = await http.get(_uri('/api/public/offline-manifest'));
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Offline manifest yuklanmadi',
+      );
+    }
+    final manifest = body['manifest'];
+    if (manifest is! Map) {
+      throw ApiException(500, 'Offline manifest topilmadi');
+    }
+    return OfflineManifest.fromJson(Map<String, dynamic>.from(manifest));
+  }
+
+  static Future<String> uploadQuestionAudio({
+    required String accessToken,
+    required String audioPath,
+    required String audioName,
+    required String sourceKind,
+    required String sourceId,
+    required String questionId,
+    String oldAudioUrl = '',
+  }) async {
+    final file = File(audioPath);
+    if (!await file.exists()) {
+      throw ApiException(400, 'Audio fayli topilmadi');
+    }
+
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) {
+      throw ApiException(400, 'Audio fayli bo‘sh');
+    }
+
+    final response = await http.post(
+      _uri('/api/upload-audio'),
       headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({
+        'audioBase64': base64Encode(bytes),
+        'audioName': audioName,
+        'audioType': _audioMimeTypeFromPath(audioPath),
+        'oldAudioUrl': oldAudioUrl,
+        if (sourceKind == 'ticket') 'ticketId': sourceId,
+        if (sourceKind == 'topic') 'topicId': sourceId,
+        if (sourceKind == 'customTest') 'customTestId': sourceId,
+        'questionId': questionId,
+      }),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {
       throw ApiException(
         response.statusCode,
-        body['error']?.toString() ?? 'Video darslar yuklanmadi',
+        body['error']?.toString() ?? 'Audio yuklash amalga oshmadi',
       );
     }
-    final rawVideos = body['videos'];
-    if (rawVideos is! List) return const [];
-    return rawVideos
-        .whereType<Map>()
-        .map((video) => VideoLesson.fromJson(Map<String, dynamic>.from(video)))
-        .toList();
+    final audioUrl = body['audioUrl']?.toString();
+    if (audioUrl == null || audioUrl.isEmpty) {
+      throw ApiException(500, 'Audio URL qaytmadi');
+    }
+    return audioUrl;
+  }
+
+  static Future<void> deleteQuestionAudio({
+    required String accessToken,
+    required String sourceKind,
+    required String sourceId,
+    required String questionId,
+    required String audioUrl,
+  }) async {
+    final body = <String, String>{
+      'audioUrl': audioUrl,
+      'questionId': questionId,
+    };
+    if (sourceKind == 'ticket') {
+      body['ticketId'] = sourceId;
+    } else if (sourceKind == 'topic') {
+      body['topicId'] = sourceId;
+    } else if (sourceKind == 'customTest') {
+      body['customTestId'] = sourceId;
+    }
+
+    final response = await http.delete(
+      _uri('/api/upload-audio'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode(body),
+    );
+    final decoded = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        decoded['error']?.toString() ?? 'Audio o‘chirish amalga oshmadi',
+      );
+    }
   }
 
   static Future<String> videoPlaybackUrl({
     required String accessToken,
     required String videoId,
   }) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/video-lessons/$videoId/playback'),
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
+    try {
+      final response = await http.get(
+        _uri('/api/video-lessons/$videoId/playback'),
+        headers: _jsonHeaders(accessToken: accessToken),
+      );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Playback yuklanmadi',
+        );
+      }
+      final playbackUrl = body['playbackUrl']?.toString();
+      if (playbackUrl == null || playbackUrl.isEmpty) {
+        throw ApiException(500, 'Playback URL topilmadi');
+      }
+      return playbackUrl;
+    } on SocketException {
       throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Playback yuklanmadi',
+        503,
+        'Video darslar uchun internet kerak. Ushbu bo‘lim oflayn ishlamaydi.',
       );
     }
-    final playbackUrl = body['playbackUrl']?.toString();
-    if (playbackUrl == null || playbackUrl.isEmpty) {
-      throw ApiException(500, 'Playback URL topilmadi');
-    }
-    return playbackUrl;
+  }
+
+  static String _audioMimeTypeFromPath(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.mp3')) return 'audio/mpeg';
+    if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) return 'audio/mp4';
+    if (lower.endsWith('.wav')) return 'audio/wav';
+    if (lower.endsWith('.webm')) return 'audio/webm';
+    if (lower.endsWith('.ogg') || lower.endsWith('.oga')) return 'audio/ogg';
+    return 'audio/mp4';
   }
 
   static Future<Map<String, dynamic>?> exam(String accessToken) async {
     final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/exam'),
+      _uri('/api/exam'),
       headers: _jsonHeaders(accessToken: accessToken),
     );
     final body = _decodeBody(response);
@@ -329,7 +522,7 @@ class ApiClient {
     required int count,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/exam/start'),
+      _uri('/api/exam/start'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'count': count}),
     );
@@ -353,7 +546,7 @@ class ApiClient {
     bool finalize = false,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/exam/progress'),
+      _uri('/api/exam/progress'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'answers': answers, 'finalize': finalize}),
     );
@@ -369,7 +562,7 @@ class ApiClient {
 
   static Future<void> examReset(String accessToken) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/exam/reset'),
+      _uri('/api/exam/reset'),
       headers: _jsonHeaders(accessToken: accessToken),
     );
     final body = _decodeBody(response);
@@ -394,26 +587,52 @@ class ApiClient {
       'q': search,
       'filter': filter,
     };
-    final uri = Uri.parse(
-      '$apiBaseUrl/api/answers',
-    ).replace(queryParameters: params);
-    final response = await http.get(
-      uri,
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Savollar yuklanmadi',
+    final uri = _uri('/api/answers', queryParameters: params);
+    final cacheId = '$offset|$limit|$search|$filter';
+    try {
+      final response = await http.get(
+        uri,
+        headers: _jsonHeaders(accessToken: accessToken),
       );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Savollar yuklanmadi',
+        );
+      }
+      final rawQuestions = _mapsFromJsonList(body['questions']);
+      if (rawQuestions.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'answers',
+          id: cacheId,
+          lang: _langParam(),
+          questions: rawQuestions,
+        );
+      }
+      return body;
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'answers',
+        id: cacheId,
+        lang: _langParam(),
+      );
+      if (cached != null) {
+        return <String, dynamic>{
+          'questions': cached,
+          'total': cached.length,
+          'offset': offset,
+          'limit': limit,
+          'hasMore': false,
+        };
+      }
+      rethrow;
     }
-    return body;
   }
 
   static Future<List<MistakeQuestion>> mistakes(String accessToken) async {
     final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/mistakes'),
+      _uri('/api/mistakes'),
       headers: _jsonHeaders(accessToken: accessToken),
     );
     final body = _decodeBody(response);
@@ -439,7 +658,7 @@ class ApiClient {
     required Map<String, int> answers,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/mistakes/progress'),
+      _uri('/api/mistakes/progress'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'answers': answers}),
     );
@@ -457,60 +676,84 @@ class ApiClient {
     required String accessToken,
     required String ticketId,
   }) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/tickets/$ticketId'),
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Bilet yuklanmadi',
+    final lang = _langParam();
+    try {
+      final response = await http.get(
+        _uri('/api/tickets/$ticketId'),
+        headers: _jsonHeaders(accessToken: accessToken),
       );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Bilet yuklanmadi',
+        );
+      }
+      final ticket = body['ticket'];
+      if (ticket is! Map) {
+        throw Exception('Noto‘g‘ri bilet javobi');
+      }
+      final questions = _mapsFromJsonList(ticket['questions']);
+      if (questions.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'ticket',
+          id: ticketId,
+          lang: lang,
+          questions: questions,
+        );
+      }
+      return _mapModels(questions, TopicQuestion.fromJson);
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'ticket',
+        id: ticketId,
+        lang: lang,
+      );
+      if (cached != null) return _mapModels(cached, TopicQuestion.fromJson);
+      rethrow;
     }
-    final ticket = body['ticket'];
-    if (ticket is! Map) {
-      throw Exception('Noto‘g‘ri bilet javobi');
-    }
-    final questions = ticket['questions'];
-    if (questions is! List) return const [];
-    return questions
-        .whereType<Map>()
-        .map(
-          (question) =>
-              TopicQuestion.fromJson(Map<String, dynamic>.from(question)),
-        )
-        .toList();
   }
 
   static Future<List<TopicQuestion>> customTestQuestions({
     required String accessToken,
     required String testId,
   }) async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/custom-tests/$testId'),
-      headers: _jsonHeaders(accessToken: accessToken),
-    );
-    final body = _decodeBody(response);
-    if (response.statusCode >= 400) {
-      throw ApiException(
-        response.statusCode,
-        body['error']?.toString() ?? 'Sozlamali test yuklanmadi',
+    final lang = _langParam();
+    try {
+      final response = await http.get(
+        _uri('/api/custom-tests/$testId'),
+        headers: _jsonHeaders(accessToken: accessToken),
       );
+      final body = _decodeBody(response);
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          body['error']?.toString() ?? 'Sozlamali test yuklanmadi',
+        );
+      }
+      final customTest = body['customTest'];
+      if (customTest is! Map) {
+        throw Exception('Noto‘g‘ri sozlamali test javobi');
+      }
+      final questions = _mapsFromJsonList(customTest['questions']);
+      if (questions.isNotEmpty) {
+        await OfflineCacheStore.saveQuestions(
+          kind: 'custom-test',
+          id: testId,
+          lang: lang,
+          questions: questions,
+        );
+      }
+      return _mapModels(questions, TopicQuestion.fromJson);
+    } on SocketException {
+      final cached = await OfflineCacheStore.loadQuestions(
+        kind: 'custom-test',
+        id: testId,
+        lang: lang,
+      );
+      if (cached != null) return _mapModels(cached, TopicQuestion.fromJson);
+      rethrow;
     }
-    final customTest = body['customTest'];
-    if (customTest is! Map) {
-      throw Exception('Noto‘g‘ri sozlamali test javobi');
-    }
-    final questions = customTest['questions'];
-    if (questions is! List) return const [];
-    return questions
-        .whereType<Map>()
-        .map(
-          (question) =>
-              TopicQuestion.fromJson(Map<String, dynamic>.from(question)),
-        )
-        .toList();
   }
 
   static Future<List<TopicQuestion>> topicQuestions({
@@ -524,25 +767,44 @@ class ApiClient {
     ];
 
     Object? lastErrorBody;
+    final lang = _langParam();
     for (final path in paths) {
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl$path'),
-        headers: _jsonHeaders(accessToken: accessToken),
-      );
-      final body = _decodeBody(response);
-      if (response.statusCode == 404) {
-        lastErrorBody = body;
-        continue;
-      }
-      if (response.statusCode >= 400) {
-        throw ApiException(
-          response.statusCode,
-          body['error']?.toString() ?? 'Savollar yuklanmadi',
+      try {
+        final response = await http.get(
+          _uri(path),
+          headers: _jsonHeaders(accessToken: accessToken),
         );
-      }
+        final body = _decodeBody(response);
+        if (response.statusCode == 404) {
+          lastErrorBody = body;
+          continue;
+        }
+        if (response.statusCode >= 400) {
+          throw ApiException(
+            response.statusCode,
+            body['error']?.toString() ?? 'Savollar yuklanmadi',
+          );
+        }
 
-      final questions = _extractQuestions(body);
-      if (questions.isNotEmpty) return questions;
+        final questions = _extractQuestionMaps(body);
+        if (questions.isNotEmpty) {
+          await OfflineCacheStore.saveQuestions(
+            kind: 'topic',
+            id: topicId,
+            lang: lang,
+            questions: questions,
+          );
+          return _mapModels(questions, TopicQuestion.fromJson);
+        }
+      } on SocketException {
+        final cached = await OfflineCacheStore.loadQuestions(
+          kind: 'topic',
+          id: topicId,
+          lang: lang,
+        );
+        if (cached != null) return _mapModels(cached, TopicQuestion.fromJson);
+        rethrow;
+      }
     }
 
     throw Exception(
@@ -559,7 +821,7 @@ class ApiClient {
     required Map<String, int> answers,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/topic-progress/$topicId'),
+      _uri('/api/topic-progress/$topicId'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'answers': answers}),
     );
@@ -572,13 +834,33 @@ class ApiClient {
     }
   }
 
+  static Future<TopicProgressSummary?> topicProgress({
+    required String accessToken,
+    required String topicId,
+  }) async {
+    final response = await http.get(
+      _uri('/api/topic-progress/$topicId'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Progress yuklanmadi',
+      );
+    }
+    final progress = body['progress'];
+    if (progress is! Map) return null;
+    return TopicProgressSummary.fromJson(Map<String, dynamic>.from(progress));
+  }
+
   static Future<void> saveTicketProgress({
     required String accessToken,
     required String ticketId,
     required Map<String, int> answers,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/progress/$ticketId'),
+      _uri('/api/progress/$ticketId'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'answers': answers}),
     );
@@ -597,7 +879,7 @@ class ApiClient {
     required Map<String, int> answers,
   }) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/custom-test-progress/$testId'),
+      _uri('/api/custom-test-progress/$testId'),
       headers: _jsonHeaders(accessToken: accessToken),
       body: jsonEncode({'answers': answers}),
     );
@@ -610,7 +892,9 @@ class ApiClient {
     }
   }
 
-  static List<TopicQuestion> _extractQuestions(Map<String, dynamic> body) {
+  static List<Map<String, dynamic>> _extractQuestionMaps(
+    Map<String, dynamic> body,
+  ) {
     final candidates = <dynamic>[
       body['questions'],
       body['topic'] is Map ? (body['topic'] as Map)['questions'] : null,
@@ -619,16 +903,10 @@ class ApiClient {
     ];
 
     for (final candidate in candidates) {
-      if (candidate is List) {
-        return candidate
-            .whereType<Map>()
-            .map(
-              (item) => TopicQuestion.fromJson(Map<String, dynamic>.from(item)),
-            )
-            .toList();
-      }
+      final maps = _mapsFromJsonList(candidate);
+      if (maps.isNotEmpty) return maps;
     }
-    return const <TopicQuestion>[];
+    return const <Map<String, dynamic>>[];
   }
 
   static Map<String, dynamic> _decodeBody(http.Response response) {

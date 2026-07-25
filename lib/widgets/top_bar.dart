@@ -3,26 +3,41 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 
 class TopBar extends StatelessWidget {
-  const TopBar({super.key, this.trailing});
+  const TopBar({
+    super.key,
+    this.trailing,
+    this.backgroundColor,
+    this.borderColor,
+    this.shadowColor,
+    this.brandColor,
+  });
 
   final Widget? trailing;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final Color? shadowColor;
+  final Color? brandColor;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? AppColors.surface,
           borderRadius: BorderRadius.all(Radius.circular(18)),
           border: Border.fromBorderSide(
-            BorderSide(color: Color(0xFFDDE2EA), width: 1),
+            BorderSide(
+              color:
+                  borderColor ?? AppColors.border.withValues(alpha: 0.85),
+              width: 1,
+            ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(0x12000000),
+              color: shadowColor ?? AppColors.shadow,
               blurRadius: 18,
-              offset: Offset(0, 8),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -30,7 +45,7 @@ class TopBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
           child: Row(
             children: [
-              const _BrandMark(),
+              _BrandMark(color: brandColor ?? AppColors.primary),
               const Spacer(),
               if (trailing case final Widget widget) widget,
             ],
@@ -42,7 +57,9 @@ class TopBar extends StatelessWidget {
 }
 
 class _BrandMark extends StatelessWidget {
-  const _BrandMark();
+  const _BrandMark({required this.color});
+
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +73,7 @@ class _BrandMark extends StatelessWidget {
           fit: BoxFit.contain,
         ),
         const SizedBox(width: 8),
-        const Text.rich(
+        Text.rich(
           TextSpan(
             style: TextStyle(
               fontSize: 17,
@@ -68,7 +85,7 @@ class _BrandMark extends StatelessWidget {
             children: [
               TextSpan(
                 text: 'Topshirdi',
-                style: TextStyle(color: AppColors.primary),
+                style: TextStyle(color: color),
               ),
             ],
           ),

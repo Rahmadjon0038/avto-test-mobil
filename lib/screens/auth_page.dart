@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:avto_test_mobil/screens/privacy_policy_page.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,9 +8,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_colors.dart';
 import '../services/api_client.dart';
-import 'privacy_policy_page.dart';
+import '../l10n/app_strings.dart';
 
 enum AuthMode { login, register }
+
+const _authBackground = Colors.white;
+const _authSurface = Colors.white;
+const _authSurfaceTint = Color(0xFFEAF2FF);
+const _authPrimary = Color(0xFF007AFF);
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.initialMode});
@@ -26,7 +32,6 @@ class _AuthPageState extends State<AuthPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
-  // bool _appleLoading = false;
   bool _hidePassword = true;
   bool _acceptPrivacyPolicy = false;
   late final TapGestureRecognizer _privacyPolicyRecognizer;
@@ -58,22 +63,22 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _submit() async {
+    final strings = AppStrings.of(context);
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_mode == AuthMode.register && !_acceptPrivacyPolicy) {
       setState(() {
-        _error =
-            'Ro‘yxatdan o‘tish uchun maxfiylik siyosatiga rozilik bildiring';
+        _error = strings.t('accept_privacy');
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maxfiylik siyosatiga rozilik bildiring')),
+        SnackBar(content: Text(strings.t('accept_privacy'))),
       );
       return;
     }
 
     final phoneDigits = _normalizePhoneDigits(_phoneController.text);
     if (phoneDigits.length != 9) {
-      setState(() => _error = 'Telefon raqam formati noto‘g‘ri');
+      setState(() => _error = strings.t('phone_invalid'));
       return;
     }
 
@@ -104,6 +109,11 @@ class _AuthPageState extends State<AuthPage> {
           _error =
               'Bu raqam allaqachon ro‘yxatdan o‘tgan, iltimos tizimga kiring';
         });
+      } else if (e is SocketException) {
+        setState(() {
+          _error =
+              'Internetga ulanish talab qilinadi. Mobil internet yoki Wi-Fi ni yoqing.';
+        });
       } else {
         setState(() => _error = message);
       }
@@ -113,53 +123,6 @@ class _AuthPageState extends State<AuthPage> {
       }
     }
   }
-
-  // Future<void> _appleLogin() async {
-  //   if (_loading || _appleLoading || Platform.isAndroid) return;
-  //
-  //   setState(() {
-  //     _appleLoading = true;
-  //     _error = null;
-  //   });
-  //
-  //   try {
-  //     final credential = await SignInWithApple.getAppleIDCredential(
-  //       scopes: const [
-  //         AppleIDAuthorizationScopes.email,
-  //         AppleIDAuthorizationScopes.fullName,
-  //       ],
-  //     );
-  //     final identityToken = credential.identityToken;
-  //     if (identityToken == null || identityToken.isEmpty) {
-  //       throw Exception('Apple token topilmadi');
-  //     }
-  //     final fullName = [
-  //       credential.givenName,
-  //       credential.familyName,
-  //     ].where((part) => (part ?? '').trim().isNotEmpty).join(' ');
-  //     final session = await ApiClient.appleLogin(
-  //       identityToken: identityToken,
-  //       email: credential.email,
-  //       fullName: fullName,
-  //     );
-  //     if (!mounted) return;
-  //     Navigator.of(context).pop(session);
-  //   } on SignInWithAppleAuthorizationException catch (e) {
-  //     if (!mounted) return;
-  //     if (e.code == AuthorizationErrorCode.canceled) {
-  //       setState(() => _appleLoading = false);
-  //       return;
-  //     }
-  //     setState(() => _error = e.message);
-  //   } catch (e) {
-  //     if (!mounted) return;
-  //     setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() => _appleLoading = false);
-  //     }
-  //   }
-  // }
 
   void _openPrivacyPolicy() {
     if (Platform.isMacOS) {
@@ -175,6 +138,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _openForgotPasswordDialog() async {
+    final strings = AppStrings.of(context);
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -184,7 +148,7 @@ class _AuthPageState extends State<AuthPage> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _authSurface,
               borderRadius: BorderRadius.circular(28),
               boxShadow: const [
                 BoxShadow(
@@ -204,18 +168,18 @@ class _AuthPageState extends State<AuthPage> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceTint,
+                        color: _authSurfaceTint,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.lock_reset_rounded,
-                        color: AppColors.primary,
+                        color: _authPrimary,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Parolni tiklash',
+                        strings.t('password_reset_title'),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -225,13 +189,13 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(dialogContext).pop(),
-                      icon: const Icon(Icons.close_rounded),
+                      icon: Icon(Icons.close_rounded),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Agar parolingizni unutgan bo‘lsangiz, admin bilan Telegram orqali bog‘laning. Admin sizga vaqtinchalik parol beradi.',
+                Text(
+                  strings.t('password_reset_help'),
                   style: TextStyle(
                     fontSize: 15,
                     height: 1.5,
@@ -263,12 +227,12 @@ class _AuthPageState extends State<AuthPage> {
                       );
                       if (!opened && dialogContext.mounted) {
                         ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          const SnackBar(content: Text('Telegram ochilmadi')),
+                          SnackBar(content: Text(strings.t('telegram_not_opened'))),
                         );
                       }
                     },
-                    icon: const Icon(Icons.send_rounded),
-                    label: const Text('Telegram orqali adminga yozish'),
+                    icon: Icon(Icons.send_rounded),
+                    label: Text(strings.t('write_admin')),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF229ED9),
                       foregroundColor: Colors.white,
@@ -287,8 +251,8 @@ class _AuthPageState extends State<AuthPage> {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: const Color(0xFFB7D2FF)),
                   ),
-                  child: const Text(
-                    'Adminga aynan shu xabarni yuboring. Telefon raqamingiz orqali accountingiz topiladi.',
+                  child: Text(
+                    strings.t('password_reset_note'),
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.4,
@@ -308,12 +272,13 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final isLogin = _mode == AuthMode.login;
-    // final showAppleButton = Platform.isIOS;
+
+    final strings = AppStrings.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _authBackground,
       body: Container(
-        color: Colors.white,
+        color: _authBackground,
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -355,7 +320,7 @@ class _AuthPageState extends State<AuthPage> {
                           children: [
                             Expanded(
                               child: _ModeTab(
-                                label: 'Kirish',
+                                label: strings.t('login'),
                                 icon: Icons.person_rounded,
                                 selected: isLogin,
                                 onTap: () => _switchMode(AuthMode.login),
@@ -363,7 +328,7 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                             Expanded(
                               child: _ModeTab(
-                                label: "Ro'yxat",
+                                label: strings.t('register'),
                                 icon: Icons.person_add_alt_1_rounded,
                                 selected: !isLogin,
                                 onTap: () => _switchMode(AuthMode.register),
@@ -375,9 +340,9 @@ class _AuthPageState extends State<AuthPage> {
                       const SizedBox(height: 16),
                       Center(
                         child: Text(
-                          isLogin ? 'Tizimga kirish' : "Ro'yxatdan o'tish",
+                          isLogin ? strings.t('login') : strings.t('register'),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 23,
                             fontWeight: FontWeight.w800,
                             color: AppColors.text,
@@ -394,7 +359,7 @@ class _AuthPageState extends State<AuthPage> {
                           children: [
                             _RoundedField(
                               controller: _phoneController,
-                              label: 'Telefon raqam',
+                              label: strings.t('phone'),
                               hint: '90 123 45 67',
                               icon: Icons.phone_rounded,
                               keyboardType: TextInputType.phone,
@@ -407,12 +372,12 @@ class _AuthPageState extends State<AuthPage> {
                                 );
                                 return digits.length == 9
                                     ? null
-                                    : 'Telefon raqam noto‘g‘ri';
+                                    : strings.t('phone_invalid');
                               },
                             ),
                             const SizedBox(height: 14),
                             if (!isLogin) ...[
-                              const Text(
+                              Text(
                                 'Uzingiz uchun maxsus parol yarating',
                                 style: TextStyle(
                                   fontSize: 12.5,
@@ -424,8 +389,8 @@ class _AuthPageState extends State<AuthPage> {
                             ],
                             _RoundedField(
                               controller: _passwordController,
-                              label: 'Parol',
-                              hint: 'Parol',
+                              label: strings.t('password'),
+                              hint: strings.t('password'),
                               icon: Icons.lock_rounded,
                               obscureText: _hidePassword,
                               textInputAction: TextInputAction.done,
@@ -462,8 +427,8 @@ class _AuthPageState extends State<AuthPage> {
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                  child: const Text(
-                                    'Parolni unutdingizmi?',
+                                  child: Text(
+                                    strings.t('forgot_password'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -518,23 +483,22 @@ class _AuthPageState extends State<AuthPage> {
                                           ),
                                           child: RichText(
                                             text: TextSpan(
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 12.5,
                                                 height: 1.35,
                                                 fontWeight: FontWeight.w600,
                                                 color: AppColors.textMuted,
                                               ),
                                               children: [
-                                                const TextSpan(
-                                                  text:
-                                                      'Maxfiylik siyosatiga roziman. ',
+                                                TextSpan(
+                                                  text: '${strings.t('accept_privacy')} ',
                                                 ),
                                                 TextSpan(
-                                                  text: 'Privacy Policy',
-                                                  style: const TextStyle(
-                                                    color: AppColors.primary,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
+                                                text: strings.t('privacy_policy'),
+                                                style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
                                                   recognizer:
                                                       _privacyPolicyRecognizer,
                                                 ),
@@ -554,19 +518,15 @@ class _AuthPageState extends State<AuthPage> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: AppColors.danger.withValues(
-                                    alpha: 0.08,
-                                  ),
+                                  color: AppColors.danger.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(
-                                    color: AppColors.danger.withValues(
-                                      alpha: 0.18,
-                                    ),
+                                    color: AppColors.danger.withValues(alpha: 0.18),
                                   ),
                                 ),
                                 child: Text(
                                   _error!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.danger,
                                     fontSize: 13,
                                     height: 1.35,
@@ -586,7 +546,7 @@ class _AuthPageState extends State<AuthPage> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(18),
                                   ),
-                                  textStyle: const TextStyle(
+                                  textStyle: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -595,8 +555,8 @@ class _AuthPageState extends State<AuthPage> {
                                   _loading
                                       ? 'Kutilmoqda...'
                                       : isLogin
-                                      ? 'Kirish'
-                                      : "Ro'yxatdan o'tish",
+                                      ? strings.t('login')
+                                      : strings.t('register'),
                                 ),
                               ),
                             ),
@@ -612,24 +572,17 @@ class _AuthPageState extends State<AuthPage> {
                                       ),
                                 child: Text(
                                   isLogin
-                                      ? "Hisobingiz yo‘qmi? Ro'yxatdan o'tish"
-                                      : 'Hisobingiz bormi? Kirish',
+                                      ? "Hisobingiz yo‘qmi? ${strings.t('register')}"
+                                      : "Hisobingiz bormi? ${strings.t('login')}",
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
+                                  style: TextStyle(
+                                    color: _authPrimary,
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ),
-                            // if (showAppleButton) ...[
-                            //   const SizedBox(height: 14),
-                            //   _AppleButton(
-                            //     loading: _appleLoading,
-                            //     onPressed: _appleLoading ? null : _appleLogin,
-                            //   ),
-                            // ],
                           ],
                         ),
                       ),
@@ -706,7 +659,7 @@ class _BackCircle extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_rounded,
             color: AppColors.text,
             size: 24,
@@ -724,7 +677,7 @@ class _AuthBrand extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       textAlign: TextAlign.center,
-      text: const TextSpan(
+      text: TextSpan(
         style: TextStyle(
           fontSize: 19,
           fontWeight: FontWeight.w800,
@@ -803,45 +756,6 @@ class _ModeTab extends StatelessWidget {
   }
 }
 
-// class _AppleButton extends StatelessWidget {
-//   const _AppleButton({required this.loading, required this.onPressed});
-//
-//   final bool loading;
-//   final VoidCallback? onPressed;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return SizedBox(
-//       width: double.infinity,
-//       height: 52,
-//       child: FilledButton.icon(
-//         onPressed: onPressed,
-//         style: FilledButton.styleFrom(
-//           backgroundColor: const Color(0xFF111827),
-//           foregroundColor: Colors.white,
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(18),
-//           ),
-//         ),
-//         icon: loading
-//             ? const SizedBox(
-//                 width: 18,
-//                 height: 18,
-//                 child: CircularProgressIndicator(
-//                   strokeWidth: 2.2,
-//                   color: Colors.white,
-//                 ),
-//               )
-//             : const Icon(Icons.apple_rounded, size: 22),
-//         label: const Text(
-//           'Apple orqali kirish',
-//           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 class _RoundedField extends StatelessWidget {
   const _RoundedField({
     required this.controller,
@@ -878,7 +792,7 @@ class _RoundedField extends StatelessWidget {
       textInputAction: textInputAction,
       inputFormatters: inputFormatters,
       validator: validator,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         color: AppColors.text,
         fontWeight: FontWeight.w500,
@@ -899,8 +813,8 @@ class _RoundedField extends StatelessWidget {
           horizontal: 18,
           vertical: 16,
         ),
-        labelStyle: const TextStyle(color: AppColors.textMuted),
-        hintStyle: const TextStyle(color: AppColors.textSoft),
+        labelStyle: TextStyle(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textSoft),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(
@@ -915,15 +829,15 @@ class _RoundedField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.2),
+          borderSide: BorderSide(color: AppColors.danger, width: 1.2),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.4),
+          borderSide: BorderSide(color: AppColors.danger, width: 1.4),
         ),
       ),
     );

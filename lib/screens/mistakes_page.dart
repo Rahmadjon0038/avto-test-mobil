@@ -1,14 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
+import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/mistake_question.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
 import '../services/question_page_settings_store.dart';
+import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class MistakesPage extends StatefulWidget {
@@ -24,13 +28,16 @@ class MistakesPage extends StatefulWidget {
 class _MistakesPageState extends State<MistakesPage> {
   late Future<List<MistakeQuestion>> _mistakesFuture;
   final Map<String, int> _answers = <String, int>{};
+  Set<String> _hiddenMistakeIds = <String>{};
   int _currentIndex = 0;
   TabKey _tab = TabKey.list;
   bool _saving = false;
   bool _practiceFinished = false;
   bool _shuffleQuestions = false;
   bool _autoAdvanceEnabled = true;
+  bool _hiddenMistakesLoaded = false;
   late String _accessToken;
+  String? _languageCode;
   final GlobalKey _questionCardKey = GlobalKey();
   Timer? _practiceAdvanceTimer;
 
@@ -38,7 +45,26 @@ class _MistakesPageState extends State<MistakesPage> {
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
     _mistakesFuture = _loadMistakes();
+    _loadHiddenMistakes();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    _practiceAdvanceTimer?.cancel();
+    setState(() {
+      _mistakesFuture = _loadMistakes();
+      _answers.clear();
+      _currentIndex = 0;
+      _tab = TabKey.list;
+      _saving = false;
+      _practiceFinished = false;
+    });
   }
 
   Future<List<MistakeQuestion>> _loadMistakes() async {
@@ -75,6 +101,55 @@ class _MistakesPageState extends State<MistakesPage> {
     }
   }
 
+  static const String _hiddenMistakeStorageKey = 'hidden_mistake_question_ids';
+
+  Future<void> _loadHiddenMistakes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_hiddenMistakeStorageKey) ?? <String>[];
+    if (!mounted) return;
+    setState(() {
+      _hiddenMistakeIds = saved.toSet();
+      _hiddenMistakesLoaded = true;
+    });
+  }
+
+  List<MistakeQuestion> _visibleMistakes(List<MistakeQuestion> questions) {
+    return questions
+        .where((question) => !_hiddenMistakeIds.contains(question.id))
+        .toList();
+  }
+
+  Future<void> _hideMistake(MistakeQuestion question) async {
+    final nextHidden = Set<String>.from(_hiddenMistakeIds)..add(question.id);
+    setState(() {
+      _hiddenMistakeIds = nextHidden;
+      _answers.remove(question.id);
+      if (_practiceFinished && _tab == TabKey.practice) {
+        _practiceFinished = false;
+      }
+    });
+
+    try {
+      await ApiClient.mistakesProgress(
+        accessToken: _accessToken,
+        answers: <String, int>{question.id: question.correctIndex},
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppStrings.of(context).t('delete_question_failed')}: $error',
+            ),
+          ),
+        );
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_hiddenMistakeStorageKey, nextHidden.toList());
+  }
+
   @override
   void dispose() {
     _practiceAdvanceTimer?.cancel();
@@ -83,6 +158,7 @@ class _MistakesPageState extends State<MistakesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -98,14 +174,22 @@ class _MistakesPageState extends State<MistakesPage> {
               if (snapshot.hasError) {
                 return _EmptyState(
                   icon: Icons.error_outline_rounded,
-                  title: 'Xatolar yuklanmadi',
-                  subtitle: snapshot.error.toString(),
-                  buttonText: 'Ortga qaytish',
+                  title: strings.t('mistakes_load_failed'),
+                  subtitle: friendlyErrorMessage(
+                    context,
+                    snapshot.error,
+                    fallbackKey: 'mistakes_load_failed',
+                  ),
+                  buttonText: strings.t('mistakes_back'),
                   onPressed: () => Navigator.of(context).pop(),
                 );
               }
 
               final questions = snapshot.data ?? const <MistakeQuestion>[];
+              if (!_hiddenMistakesLoaded) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final visibleQuestions = _visibleMistakes(questions);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +220,7 @@ class _MistakesPageState extends State<MistakesPage> {
                   const SizedBox(height: 16),
                   _Tabs(
                     tab: _tab,
-                    count: questions.length,
+                    count: visibleQuestions.length,
                     onChanged: (nextTab) {
                       setState(() => _tab = nextTab);
                     },
@@ -144,8 +228,8 @@ class _MistakesPageState extends State<MistakesPage> {
                   const SizedBox(height: 14),
                   Expanded(
                     child: _tab == TabKey.list
-                        ? _buildListTab(context, questions)
-                        : _buildPracticeTab(context, questions),
+                        ? _buildListTab(context, visibleQuestions)
+                        : _buildPracticeTab(context, visibleQuestions),
                   ),
                 ],
               );
@@ -157,12 +241,13 @@ class _MistakesPageState extends State<MistakesPage> {
   }
 
   Widget _buildListTab(BuildContext context, List<MistakeQuestion> questions) {
+    final strings = AppStrings.of(context);
     if (questions.isEmpty) {
       return _EmptyState(
         icon: Icons.check_circle_rounded,
-        title: 'Hozircha xato yo‘q',
-        subtitle: 'Testlarda xato qilgan savollar shu yerda ko‘rinadi.',
-        buttonText: 'Orqaga qaytish',
+        title: strings.t('mistakes_list_empty_title'),
+        subtitle: strings.t('mistakes_list_empty_subtitle'),
+        buttonText: strings.t('mistakes_back'),
         onPressed: () => Navigator.of(context).pop(),
       );
     }
@@ -182,6 +267,7 @@ class _MistakesPageState extends State<MistakesPage> {
               _currentIndex = index;
             });
           },
+          onDeleteTap: () => _hideMistake(question),
         );
       },
     );
@@ -191,12 +277,13 @@ class _MistakesPageState extends State<MistakesPage> {
     BuildContext context,
     List<MistakeQuestion> questions,
   ) {
+    final strings = AppStrings.of(context);
     if (questions.isEmpty) {
       return _EmptyState(
         icon: Icons.menu_book_rounded,
-        title: 'Mashq qilish uchun xato yo‘q',
-        subtitle: 'Avval testlarda xato qiling, keyin shu yerda ishlaysiz.',
-        buttonText: 'Orqaga qaytish',
+        title: strings.t('mistakes_practice_empty_title'),
+        subtitle: strings.t('mistakes_practice_empty_subtitle'),
+        buttonText: strings.t('mistakes_back'),
         onPressed: () => Navigator.of(context).pop(),
       );
     }
@@ -208,7 +295,6 @@ class _MistakesPageState extends State<MistakesPage> {
 
     final currentQuestion = questions[_currentIndex];
     final selected = _answers[currentQuestion.id];
-    final answered = selected != null;
 
     return QuestionSwipeDetector(
       onSwipeLeft: _practiceFinished
@@ -261,6 +347,7 @@ class _MistakesPageState extends State<MistakesPage> {
                     key: _questionCardKey,
                     question: currentQuestion,
                     selectedIndex: selected,
+                    onDeleteTap: () => _hideMistake(currentQuestion),
                     onSelect: (index) {
                       if (_practiceFinished) {
                         _showLockedRestartModal();
@@ -288,10 +375,6 @@ class _MistakesPageState extends State<MistakesPage> {
                       _scrollCurrentQuestionIntoView();
                     },
                   ),
-                  if (answered && currentQuestion.explanation.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    _ExplanationCard(text: currentQuestion.explanation),
-                  ],
                 ],
               ),
             ),
@@ -308,7 +391,9 @@ class _MistakesPageState extends State<MistakesPage> {
                 ? () => _showLockedRestartModal()
                 : () => _openFinishSheet(questions),
             onRestart: _restartPractice,
-            finishLabel: _saving ? 'Saqlanmoqda...' : 'Yakunlash',
+            finishLabel: _saving
+                ? strings.t('mistakes_saving')
+                : strings.t('mistakes_finish'),
           ),
         ],
       ),
@@ -328,10 +413,10 @@ class _MistakesPageState extends State<MistakesPage> {
   Future<void> _showLockedRestartModal() {
     return showTestLockedRestartSheet(
       context: context,
-      title: 'Test tugadi',
-      message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
+      title: AppStrings.of(context).t('mistakes_test_finished_title'),
+      message: AppStrings.of(context).t('mistakes_test_finished_message'),
       onRestart: () async => _restartPractice(),
-      restartLabel: 'Qayta boshlash',
+      restartLabel: AppStrings.of(context).t('mistakes_restart'),
     );
   }
 
@@ -365,74 +450,17 @@ class _MistakesPageState extends State<MistakesPage> {
         ? 0
         : ((correct / questions.length) * 100).round();
 
-    await showModalBottomSheet<void>(
+    await showQuestionResultModal(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return MediaQuery.removePadding(
-          context: sheetContext,
-          removeBottom: true,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Yakunlash',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _StatRow(
-                  label: 'Yechilgan',
-                  value: '$answered/${questions.length}',
-                ),
-                const SizedBox(height: 10),
-                _StatRow(label: 'To‘g‘ri bo‘lishi kutilgan', value: '$correct'),
-                const SizedBox(height: 10),
-                _StatRow(label: 'Qoladigan xatolar', value: '$wrong'),
-                const SizedBox(height: 10),
-                _StatRow(label: 'Foiz', value: '$percent%'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _saving
-                        ? null
-                        : () async {
-                            Navigator.of(sheetContext).pop();
-                            await _syncMistakes(questions);
-                          },
-                    child: Text(_saving ? 'Saqlanmoqda...' : 'Tasdiqlash'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+      correct: correct,
+      wrong: wrong,
+      total: questions.length,
+      unanswered: (questions.length - answered).clamp(0, questions.length),
+      percent: percent,
+      onClose: () async {
+        await _syncMistakes(questions);
       },
+      popPageOnClose: true,
     );
   }
 
@@ -456,7 +484,13 @@ class _MistakesPageState extends State<MistakesPage> {
       if (!mounted) return;
       final fixed = (result['fixed'] ?? 0).toString();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Yakunlandi: $fixed ta xato to‘g‘rilandi')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(context)
+                .t('mistakes_synced')
+                .replaceFirst('{fixed}', fixed),
+          ),
+        ),
       );
 
       setState(() {
@@ -469,7 +503,17 @@ class _MistakesPageState extends State<MistakesPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            friendlyErrorMessage(
+              context,
+              error,
+              fallbackKey: 'mistakes_load_failed',
+            ),
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -486,25 +530,26 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
     return Row(
       children: [
         Material(
-          color: Colors.white,
+          color: isDark ? AppColors.surfaceSoft : AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onBack,
             customBorder: const CircleBorder(),
-            child: const SizedBox(
+            child: SizedBox(
               width: 46,
               height: 46,
-              child: Icon(Icons.arrow_back_rounded),
+              child: Icon(Icons.arrow_back_rounded, color: AppColors.text),
             ),
           ),
         ),
         const SizedBox(width: 14),
-        const Expanded(
+        Expanded(
           child: Text(
-            'Mening xatolarim',
+            AppStrings.of(context).t('mistakes_title'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -516,15 +561,19 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Material(
-          color: Colors.white,
+          color: isDark ? AppColors.surfaceSoft : AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onSettings,
             customBorder: const CircleBorder(),
-            child: const SizedBox(
+            child: SizedBox(
               width: 46,
               height: 46,
-              child: Icon(Icons.settings_outlined, size: 22),
+              child: Icon(
+                Icons.settings_outlined,
+                size: 22,
+                color: AppColors.text,
+              ),
             ),
           ),
         ),
@@ -551,7 +600,7 @@ class _Tabs extends StatelessWidget {
         Expanded(
           child: _TabButton(
             active: tab == TabKey.list,
-            label: 'Mening xatolarim',
+            label: AppStrings.of(context).t('mistakes_title'),
             badge: count,
             icon: Icons.list_rounded,
             onTap: () => onChanged(TabKey.list),
@@ -561,7 +610,7 @@ class _Tabs extends StatelessWidget {
         Expanded(
           child: _TabButton(
             active: tab == TabKey.practice,
-            label: 'Mashq qilish',
+            label: AppStrings.of(context).t('practice'),
             badge: count,
             icon: Icons.task_alt_rounded,
             onTap: () => onChanged(TabKey.practice),
@@ -589,6 +638,7 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -597,12 +647,14 @@ class _TabButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
-            color: active ? AppColors.primary : Colors.white,
+            color: active
+                ? AppColors.primary
+                : (isDark ? AppColors.surfaceSoft : Colors.white),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: active
                   ? AppColors.primary
-                  : AppColors.border.withValues(alpha: 0.72),
+                  : AppColors.border.withValues(alpha: isDark ? 0.9 : 0.72),
             ),
           ),
           child: Row(
@@ -631,7 +683,7 @@ class _TabButton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: active
                       ? Colors.white.withValues(alpha: 0.2)
-                      : AppColors.surfaceSoft,
+                      : (isDark ? AppColors.surface : AppColors.surfaceSoft),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -656,46 +708,102 @@ class _MistakeCard extends StatelessWidget {
     required this.question,
     required this.index,
     required this.onPracticeTap,
+    required this.onDeleteTap,
   });
 
   final MistakeQuestion question;
   final int index;
   final VoidCallback onPracticeTap;
+  final VoidCallback onDeleteTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
-          boxShadow: const [
+    final isDark = AppColors.isDarkMode;
+    final cardColor = isDark ? AppColors.surface : Colors.white;
+    final deleteTint = isDark
+        ? const Color(0xFF3A2020)
+        : const Color(0xFFFFECEB);
+    final shadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ]
+        : const [
             BoxShadow(
               color: Color(0x08000000),
               blurRadius: 10,
               offset: Offset(0, 5),
             ),
-          ],
+          ];
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: isDark ? 0.9 : 0.75),
+          ),
+          boxShadow: shadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _title(index, question),
-              style: const TextStyle(
-                fontSize: 13.8,
-                fontWeight: FontWeight.w800,
-                color: AppColors.text,
+            SizedBox(
+              width: double.infinity,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 56, top: 2),
+                    child: Text(
+                      _title(context, index, question),
+                      style: TextStyle(
+                        fontSize: 13.8,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: -2,
+                    right: 0,
+                    child: Material(
+                      color: deleteTint,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        onTap: onDeleteTap,
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.danger.withValues(alpha: 0.22),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.delete_forever_rounded,
+                            size: 19,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
             Text(
               question.text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14.6,
                 height: 1.34,
                 fontWeight: FontWeight.w600,
@@ -720,7 +828,7 @@ class _MistakeCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 question.explanation,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.6,
                   height: 1.44,
                   color: AppColors.textMuted,
@@ -746,9 +854,9 @@ class _MistakeCard extends StatelessWidget {
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
-                  icon: const Icon(Icons.volume_up_rounded, size: 18),
-                  label: const Text(
-                    'Audio izoh',
+                  icon: Icon(Icons.volume_up_rounded, size: 18),
+                  label: Text(
+                    AppStrings.of(context).t('audio_explanation'),
                     style: TextStyle(
                       fontSize: 12.4,
                       fontWeight: FontWeight.w700,
@@ -768,7 +876,7 @@ class _MistakeCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Mashqda ochish'),
+                child: Text(AppStrings.of(context).t('mistakes_open_practice')),
               ),
             ),
           ],
@@ -777,8 +885,8 @@ class _MistakeCard extends StatelessWidget {
     );
   }
 
-  String _title(int index, MistakeQuestion question) {
-    return '${index + 1}-savol';
+  String _title(BuildContext context, int index, MistakeQuestion question) {
+    return '${index + 1}-${AppStrings.of(context).t('question_suffix')}';
   }
 }
 
@@ -847,33 +955,34 @@ class _CompactOptionListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
     final backgroundColor = hasAnswered
         ? correct
-              ? const Color(0xFFE1F5E8)
+              ? (isDark ? const Color(0xFF163625) : const Color(0xFFE1F5E8))
               : selected
-              ? const Color(0xFFFDE3E3)
-              : Colors.white
+              ? (isDark ? const Color(0xFF3B2023) : const Color(0xFFFDE3E3))
+              : (isDark ? AppColors.surfaceSoft : Colors.white)
         : selected
         ? AppColors.surfaceTint
-        : Colors.white;
+        : (isDark ? AppColors.surface : Colors.white);
     final borderColor = hasAnswered
         ? correct
-              ? const Color(0xFF98D8AC)
+              ? (isDark ? const Color(0xFF2E6E49) : const Color(0xFF98D8AC))
               : selected
-              ? const Color(0xFFEEA4A4)
-              : AppColors.border.withValues(alpha: 0.72)
+              ? (isDark ? const Color(0xFF8C4E50) : const Color(0xFFEEA4A4))
+              : AppColors.border.withValues(alpha: isDark ? 0.9 : 0.72)
         : selected
         ? AppColors.primary.withValues(alpha: 0.32)
-        : AppColors.border.withValues(alpha: 0.72);
+        : AppColors.border.withValues(alpha: isDark ? 0.9 : 0.72);
     final iconBackground = hasAnswered
         ? correct
               ? const Color(0xFF21A65B)
               : selected
               ? const Color(0xFFD64545)
-              : const Color(0xFFE9EDF6)
+              : (isDark ? const Color(0xFF2A3550) : const Color(0xFFE9EDF6))
         : selected
         ? AppColors.primary
-        : const Color(0xFFE9EDF6);
+        : (isDark ? const Color(0xFF2A3550) : const Color(0xFFE9EDF6));
     final icon = hasAnswered
         ? correct
               ? Icons.check_rounded
@@ -885,7 +994,7 @@ class _CompactOptionListItem extends StatelessWidget {
         : Icons.circle_outlined;
     final textColor = hasAnswered
         ? correct
-              ? const Color(0xFF178343)
+              ? (isDark ? const Color(0xFF7EE2A8) : const Color(0xFF178343))
               : selected
               ? const Color(0xFFD64545)
               : AppColors.text
@@ -949,46 +1058,6 @@ class _CompactOptionListItem extends StatelessWidget {
   }
 }
 
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuestionNavigator extends StatelessWidget {
   const _QuestionNavigator({
     required this.total,
@@ -1008,6 +1077,7 @@ class _QuestionNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
     return SizedBox(
       height: 42,
       child: ListView.separated(
@@ -1027,7 +1097,7 @@ class _QuestionNavigator extends StatelessWidget {
               ? isCorrect
                     ? const Color(0xFF21A65B)
                     : const Color(0xFFD64545)
-              : AppColors.surfaceSoft;
+              : (isDark ? AppColors.surfaceSoft : AppColors.surfaceSoft);
           final borderColor = isCurrent
               ? const Color(0xFF7FA6FF)
               : answered
@@ -1075,39 +1145,94 @@ class _QuestionCard extends StatelessWidget {
     required this.question,
     required this.selectedIndex,
     required this.onSelect,
+    required this.onDeleteTap,
   });
 
   final MistakeQuestion question;
   final int? selectedIndex;
   final ValueChanged<int> onSelect;
+  final VoidCallback onDeleteTap;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
+    final cardColor = isDark ? AppColors.surface : Colors.white;
+    final shadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ]
+        : const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.72)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: isDark ? 0.9 : 0.72),
+        ),
+        boxShadow: shadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            question.text,
-            style: const TextStyle(
-              fontSize: 17,
-              height: 1.34,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
+          SizedBox(
+            width: double.infinity,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 58, top: 2),
+                  child: Text(
+                    question.text,
+                    style: TextStyle(
+                      fontSize: 17,
+                      height: 1.34,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -2,
+                  right: 0,
+                  child: Material(
+                    color: isDark
+                        ? const Color(0xFF3A2020)
+                        : const Color(0xFFFFECEB),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: onDeleteTap,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.danger.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.delete_forever_rounded,
+                          size: 20,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           if (question.image.trim().isNotEmpty) ...[
@@ -1131,141 +1256,43 @@ class _QuestionCard extends StatelessWidget {
   }
 }
 
-class _ExplanationCard extends StatelessWidget {
-  const _ExplanationCard({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.72)),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 14.6,
-          height: 1.48,
-          color: AppColors.textMuted,
-        ),
-      ),
-    );
-  }
-}
-
 Widget _buildQuestionImage(MistakeQuestion question) {
-  final image = question.image.trim();
-  if (image.isEmpty) {
+  final imageUrl = resolveQuestionImageUrl(question.image);
+  if (imageUrl == defaultQuestionImageAsset) {
     return Image.asset(
-      'assets/default.png',
+      defaultQuestionImageAsset,
       width: double.infinity,
       fit: BoxFit.fitWidth,
       alignment: Alignment.center,
     );
   }
 
-  if (image.startsWith('http://') || image.startsWith('https://')) {
-    return Image.network(
-      image,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) => Image.asset(
-        'assets/default.png',
+  return Image.network(
+    imageUrl,
+    width: double.infinity,
+    fit: BoxFit.fitWidth,
+    alignment: Alignment.center,
+    loadingBuilder: (context, child, loadingProgress) {
+      if (loadingProgress == null) return child;
+      return const SizedBox(
+        height: 120,
         width: double.infinity,
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.center,
-      ),
-    );
-  }
-
-  if (image.startsWith('/')) {
-    return Image.network(
-      '$apiBaseUrl$image',
+        child: Center(
+          child: SizedBox(
+            height: 28,
+            width: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          ),
+        ),
+      );
+    },
+    errorBuilder: (context, error, stackTrace) => Image.asset(
+      defaultQuestionImageAsset,
       width: double.infinity,
       fit: BoxFit.fitWidth,
       alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) => Image.asset(
-        'assets/default.png',
-        width: double.infinity,
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.center,
-      ),
-    );
-  }
-
-  return image.startsWith('assets/')
-      ? Image.asset(
-          image,
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-          errorBuilder: (context, error, stackTrace) => Image.asset(
-            'assets/default.png',
-            width: double.infinity,
-            fit: BoxFit.fitWidth,
-            alignment: Alignment.center,
-          ),
-        )
-      : Image.network(
-          '$apiBaseUrl/$image',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const SizedBox(
-              height: 120,
-              width: double.infinity,
-              child: Center(
-                child: SizedBox(
-                  height: 28,
-                  width: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2.4),
-                ),
-              ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) => Image.asset(
-            'assets/default.png',
-            width: double.infinity,
-            fit: BoxFit.fitWidth,
-            alignment: Alignment.center,
-          ),
-        );
+    ),
+  );
 }
 
 class _EmptyState extends StatelessWidget {
@@ -1285,6 +1312,8 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDarkMode;
+    final emptyColor = isDark ? AppColors.surfaceSoft : const Color(0xFFF7F8FB);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1295,7 +1324,7 @@ class _EmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFF7F8FB),
+                color: emptyColor,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(icon, color: AppColors.primary, size: 34),
@@ -1304,7 +1333,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
@@ -1314,7 +1343,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: AppColors.textMuted,

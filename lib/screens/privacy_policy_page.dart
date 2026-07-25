@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../core/app_colors.dart';
+import '../l10n/app_strings.dart';
 
 class PrivacyPolicyPage extends StatefulWidget {
   const PrivacyPolicyPage({
@@ -64,10 +65,12 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final title = widget.title.isNotEmpty ? widget.title : strings.t('privacy_policy');
     if (_macOSFallback) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(title: Text(widget.title)),
+        appBar: AppBar(title: Text(title)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -76,10 +79,10 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.policy_outlined, size: 64, color: AppColors.primary),
+                  Icon(Icons.policy_outlined, size: 64, color: AppColors.primary),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Maxfiylik siyosati macOS brauzerida ochiladi.',
+                  Text(
+                    strings.t('privacy_macos_note'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
@@ -88,8 +91,8 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Davom etish uchun brauzerda ochish tugmasini bosing.',
+                  Text(
+                    strings.t('privacy_macos_hint'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -105,8 +108,8 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                         mode: LaunchMode.externalApplication,
                       );
                     },
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Brauzerda ochish'),
+                    icon: Icon(Icons.open_in_new_rounded),
+                    label: Text(strings.t('browser_open')),
                   ),
                 ],
               ),
@@ -118,7 +121,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: Text(title)),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller!),

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
+import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/answer_question.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
 import '../widgets/question_explanation_footer.dart';
 
@@ -23,6 +24,7 @@ class _AnswersPageState extends State<AnswersPage> {
   Timer? _searchDebounce;
 
   late String _accessToken;
+  String? _languageCode;
   final List<AnswerQuestion> _items = <AnswerQuestion>[];
   bool _isLoading = true;
   bool _isLoadingMore = false;
@@ -30,12 +32,23 @@ class _AnswersPageState extends State<AnswersPage> {
   int _offset = 0;
   String _filter = 'all';
   bool _sessionExpired = false;
+  int? _totalCount;
   static const int _pageSize = 40;
 
   @override
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
+    _reload();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
     _reload();
   }
 
@@ -53,6 +66,7 @@ class _AnswersPageState extends State<AnswersPage> {
       _offset = 0;
       _hasMore = true;
       _sessionExpired = false;
+      _totalCount = null;
     });
     try {
       await _loadPage();
@@ -95,6 +109,8 @@ class _AnswersPageState extends State<AnswersPage> {
       setState(() {
         _items.addAll(fetched);
         _hasMore = body['hasMore'] == true;
+        final total = body['total'] ?? body['count'] ?? body['totalCount'];
+        _totalCount = int.tryParse(total?.toString() ?? '');
         _offset = _items.length;
         _isLoading = false;
         _isLoadingMore = false;
@@ -151,6 +167,7 @@ class _AnswersPageState extends State<AnswersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -159,7 +176,11 @@ class _AnswersPageState extends State<AnswersPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _AnswersHeader(onBack: () => Navigator.of(context).pop()),
+              _AnswersHeader(
+                onBack: () => Navigator.of(context).pop(),
+                totalCount: _totalCount,
+                loadedCount: _items.length,
+              ),
               const SizedBox(height: 16),
               _SearchBar(
                 controller: _searchController,
@@ -179,7 +200,7 @@ class _AnswersPageState extends State<AnswersPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Sessiya tugadi',
+                              strings.t('session_ended_title'),
                               style: TextStyle(
                                 color: AppColors.text,
                                 fontSize: 18,
@@ -188,7 +209,7 @@ class _AnswersPageState extends State<AnswersPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Qayta kirish kerak.',
+                              strings.t('session_ended_subtitle'),
                               style: TextStyle(
                                 color: AppColors.text.withValues(alpha: 0.7),
                                 fontSize: 14,
@@ -202,7 +223,7 @@ class _AnswersPageState extends State<AnswersPage> {
                     : _items.isEmpty
                     ? Center(
                         child: Text(
-                          'Hech narsa topilmadi',
+                          strings.t('nothing_found'),
                           style: TextStyle(
                             color: AppColors.text.withValues(alpha: 0.7),
                             fontSize: 16,
@@ -224,8 +245,8 @@ class _AnswersPageState extends State<AnswersPage> {
                                   onPressed: _isLoadingMore ? null : _loadMore,
                                   child: Text(
                                     _isLoadingMore
-                                        ? 'Yuklanmoqda...'
-                                        : 'Ko‘proq yuklash',
+                                        ? strings.t('loading')
+                                        : strings.t('load_more'),
                                   ),
                                 ),
                               ),
@@ -245,16 +266,23 @@ class _AnswersPageState extends State<AnswersPage> {
 }
 
 class _AnswersHeader extends StatelessWidget {
-  const _AnswersHeader({required this.onBack});
+  const _AnswersHeader({
+    required this.onBack,
+    required this.totalCount,
+    required this.loadedCount,
+  });
 
   final VoidCallback onBack;
+  final int? totalCount;
+  final int loadedCount;
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Row(
       children: [
         Material(
-          color: Colors.white,
+          color: AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onBack,
@@ -267,16 +295,41 @@ class _AnswersHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Expanded(
-          child: Text(
-            'Barcha testlar javoblari',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  strings.t('answers'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSoft,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${AppStrings.of(context).t('answers_total')} ${totalCount ?? loadedCount} ta',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -299,6 +352,7 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Row(
       children: [
         Expanded(
@@ -306,14 +360,17 @@ class _SearchBar extends StatelessWidget {
             controller: controller,
             onChanged: onChanged,
             decoration: InputDecoration(
-              hintText: 'Savol, izoh yoki javob bo‘yicha qidir',
+              hintText: strings.t('search_placeholder'),
               hintStyle: TextStyle(
                 fontSize: 13,
                 color: AppColors.text.withValues(alpha: 0.5),
               ),
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+              ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: AppColors.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
                 borderSide: BorderSide.none,
@@ -327,9 +384,9 @@ class _SearchBar extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         PopupMenuButton<String>(
-          tooltip: 'Filtr',
+          tooltip: strings.t('filter'),
           onSelected: onFilterChanged,
-          color: Colors.white,
+          color: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -338,21 +395,21 @@ class _SearchBar extends StatelessWidget {
             PopupMenuItem<String>(
               value: 'all',
               child: _FilterMenuItem(
-                label: 'Barchasi',
+                label: strings.t('all'),
                 active: filter == 'all',
               ),
             ),
             PopupMenuItem<String>(
               value: 'with-image',
               child: _FilterMenuItem(
-                label: 'Rasmli',
+                label: strings.t('with_image'),
                 active: filter == 'with-image',
               ),
             ),
             PopupMenuItem<String>(
               value: 'without-image',
               child: _FilterMenuItem(
-                label: 'Rasmsiz',
+                label: strings.t('without_image'),
                 active: filter == 'without-image',
               ),
             ),
@@ -361,7 +418,7 @@ class _SearchBar extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AppColors.border),
             ),
@@ -412,11 +469,13 @@ class _AnswerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -429,7 +488,7 @@ class _AnswerCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${index + 1}-savol',
+            '${index + 1}-${strings.t('question_suffix')}',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -439,7 +498,7 @@ class _AnswerCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             question.text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w800,
               height: 1.3,
@@ -452,7 +511,7 @@ class _AnswerCard extends StatelessWidget {
               width: double.infinity,
               height: 150,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.surfaceSoft,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
               ),
@@ -476,12 +535,16 @@ class _AnswerCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: entry.key == question.correctIndex
-                      ? const Color(0xFFE8F6EC)
-                      : Colors.white,
+                      ? (AppColors.isDarkMode
+                            ? const Color(0xFF173523)
+                            : const Color(0xFFE8F6EC))
+                      : AppColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: entry.key == question.correctIndex
-                        ? const Color(0xFF86D39A)
+                        ? (AppColors.isDarkMode
+                              ? const Color(0xFF2F8A58)
+                              : const Color(0xFF86D39A))
                         : AppColors.border,
                   ),
                 ),
@@ -494,8 +557,10 @@ class _AnswerCard extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: entry.key == question.correctIndex
-                            ? const Color(0xFF2FBF71)
-                            : const Color(0xFFF1F5F9),
+                            ? (AppColors.isDarkMode
+                                  ? const Color(0xFF2FBF71)
+                                  : const Color(0xFF2FBF71))
+                            : AppColors.surface,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -518,7 +583,9 @@ class _AnswerCard extends StatelessWidget {
                           height: 1.2,
                           fontWeight: FontWeight.w700,
                           color: entry.key == question.correctIndex
-                              ? const Color(0xFF137A42)
+                              ? (AppColors.isDarkMode
+                                    ? const Color(0xFFB7F0C8)
+                                    : const Color(0xFF137A42))
                               : AppColors.text,
                         ),
                       ),
@@ -556,9 +623,9 @@ class _AnswerCard extends StatelessWidget {
                   ),
                   visualDensity: VisualDensity.compact,
                 ),
-                icon: const Icon(Icons.volume_up_rounded, size: 18),
-                label: const Text(
-                  'Audio izoh',
+                icon: Icon(Icons.volume_up_rounded, size: 18),
+                label: Text(
+                  strings.t('audio_explanation'),
                   style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -570,7 +637,7 @@ class _AnswerCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.surfaceSoft,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
@@ -590,9 +657,5 @@ class _AnswerCard extends StatelessWidget {
 }
 
 String _resolveImage(String image) {
-  final value = image.trim();
-  if (value.isEmpty) return '';
-  if (value.startsWith('http://') || value.startsWith('https://')) return value;
-  if (value.startsWith('/')) return '$apiBaseUrl$value';
-  return '$apiBaseUrl/$value';
+  return resolveQuestionImageUrl(image);
 }

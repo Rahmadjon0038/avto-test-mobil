@@ -1,10 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_colors.dart';
 import '../models/auth_session.dart';
+import '../models/topic_progress_summary.dart';
 import '../models/topic_summary.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../utils/friendly_error_message.dart';
 import 'topic_test_page.dart';
 
 class TopicsPage extends StatefulWidget {
@@ -19,19 +23,32 @@ class TopicsPage extends StatefulWidget {
 
 class _TopicsPageState extends State<TopicsPage> {
   late Future<List<TopicSummary>> _topicsFuture;
-  late Set<String> _markedTopicIds;
   late AuthSession _activeSession;
   late String _accessToken;
-  bool _marksLoaded = false;
+  String? _languageCode;
+  final Map<String, TopicProgressSummary> _progressByTopicId = {};
+  bool _progressHydrationQueued = false;
 
   @override
   void initState() {
     super.initState();
     _activeSession = widget.session;
     _accessToken = _activeSession.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
     _topicsFuture = _loadTopics();
-    _markedTopicIds = <String>{};
-    _loadMarkedTopics();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    setState(() {
+      _topicsFuture = _loadTopics();
+      _progressByTopicId.clear();
+      _progressHydrationQueued = false;
+    });
   }
 
   Future<List<TopicSummary>> _loadTopics() async {
@@ -53,34 +70,36 @@ class _TopicsPageState extends State<TopicsPage> {
         _accessToken = active.accessToken;
       });
       widget.onSessionUpdated?.call(active);
-      return ApiClient.topics(active.accessToken);
+      return await ApiClient.topics(active.accessToken);
     }
   }
 
-  Future<void> _loadMarkedTopics() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList(_markedTopicsStorageKey) ?? <String>[];
+  Future<void> _hydrateProgress(List<TopicSummary> topics) async {
+    if (_progressHydrationQueued) return;
+    _progressHydrationQueued = true;
+
+    final results = await Future.wait(
+      topics.map((topic) async {
+        try {
+          final progress = await ApiClient.topicProgress(
+            accessToken: _accessToken,
+            topicId: topic.id,
+          );
+          return MapEntry<String, TopicProgressSummary?>(topic.id, progress);
+        } catch (_) {
+          return MapEntry<String, TopicProgressSummary?>(topic.id, null);
+        }
+      }),
+    );
+
     if (!mounted) return;
     setState(() {
-      _markedTopicIds = saved.toSet();
-      _marksLoaded = true;
+      for (final entry in results) {
+        if (entry.value != null) {
+          _progressByTopicId[entry.key] = entry.value!;
+        }
+      }
     });
-  }
-
-  Future<void> _toggleMarkedTopic(String topicId) async {
-    final nextMarked = Set<String>.from(_markedTopicIds);
-    if (nextMarked.contains(topicId)) {
-      nextMarked.remove(topicId);
-    } else {
-      nextMarked.add(topicId);
-    }
-
-    setState(() {
-      _markedTopicIds = nextMarked;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_markedTopicsStorageKey, nextMarked.toList());
   }
 
   @override
@@ -104,7 +123,10 @@ class _TopicsPageState extends State<TopicsPage> {
                     }
                     if (snapshot.hasError) {
                       return _TopicsError(
-                        message: snapshot.error.toString(),
+                        message: friendlyErrorMessage(
+                          context,
+                          snapshot.error,
+                        ),
                         onRetry: () {
                           setState(() {
                             _topicsFuture = _loadTopics();
@@ -114,11 +136,17 @@ class _TopicsPageState extends State<TopicsPage> {
                     }
 
                     final topics = snapshot.data ?? const <TopicSummary>[];
-                    if (!_marksLoaded) {
-                      return const _TopicsLoader();
-                    }
                     if (topics.isEmpty) {
                       return const _TopicsEmpty();
+                    }
+
+                    if (!_progressHydrationQueued) {
+                      _progressHydrationQueued = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _hydrateProgress(topics);
+                        }
+                      });
                     }
 
                     return ListView.separated(
@@ -128,15 +156,13 @@ class _TopicsPageState extends State<TopicsPage> {
                           const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final topic = topics[index];
-                        final marked =
-                            topic.completed ||
-                            _markedTopicIds.contains(topic.id);
                         return _TopicCard(
                           topic: topic,
-                          marked: marked,
-                          onMarkToggle: () => _toggleMarkedTopic(topic.id),
-                          onTap: () {
-                            Navigator.of(context).push(
+                          totalCount: topic.questionCount,
+                          progress: _progressByTopicId[topic.id],
+                          marked: topic.completed,
+                          onTap: () async {
+                            final shouldRefresh = await Navigator.of(context).push<bool>(
                               MaterialPageRoute(
                                 builder: (_) => TopicTestPage(
                                   session: _activeSession,
@@ -145,6 +171,13 @@ class _TopicsPageState extends State<TopicsPage> {
                                 ),
                               ),
                             );
+                            if (shouldRefresh != false && mounted) {
+                              setState(() {
+                                _topicsFuture = _loadTopics();
+                                _progressByTopicId.clear();
+                                _progressHydrationQueued = false;
+                              });
+                            }
                           },
                         );
                       },
@@ -167,10 +200,12 @@ class _TopicsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final isDark = AppColors.isDarkMode;
     return Row(
       children: [
         Material(
-          color: Colors.white,
+          color: isDark ? AppColors.surfaceSoft : AppColors.surface,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onBack,
@@ -183,8 +218,8 @@ class _TopicsHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Text(
-          'Mavzular',
+        Text(
+          strings.t('topics'),
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -199,23 +234,56 @@ class _TopicsHeader extends StatelessWidget {
 class _TopicCard extends StatelessWidget {
   const _TopicCard({
     required this.topic,
+    required this.totalCount,
+    required this.progress,
     required this.marked,
-    required this.onMarkToggle,
     required this.onTap,
   });
 
   final TopicSummary topic;
+  final int totalCount;
+  final TopicProgressSummary? progress;
   final bool marked;
-  final VoidCallback onMarkToggle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final isDark = AppColors.isDarkMode;
+    final cardColor = marked ? AppColors.surfaceSoft : AppColors.surface;
+    final iconBackground = marked
+        ? AppColors.surfaceTint
+        : (isDark ? const Color(0xFF1A2740) : const Color(0xFFEAF1FF));
+    final iconColor = marked
+        ? (isDark ? const Color(0xFF7EE2A8) : const Color(0xFF20B26B))
+        : AppColors.primary;
+    final cardShadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ]
+        : const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+              ),
+          ];
+    final answeredCount = progress?.answers.length ?? 0;
+    final correctCount = progress?.score ?? 0;
+    final wrongCount = math.max(0, answeredCount - correctCount);
+    final unansweredCount = math.max(0, totalCount - answeredCount);
+    final hasProgress = totalCount > 0;
+    final progressValue = hasProgress ? (correctCount / totalCount).clamp(0.0, 1.0) : 0.0;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Material(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: onTap,
@@ -223,86 +291,99 @@ class _TopicCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: marked ? const Color(0xFFEAF7EF) : Colors.white,
+              color: marked
+                  ? (isDark ? const Color(0xFF172A25) : const Color(0xFFEAF7EF))
+                  : cardColor,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: marked
-                    ? const Color(0xFFB7E6C8)
-                    : AppColors.border.withValues(alpha: 0.75),
+                    ? (isDark
+                          ? const Color(0xFF2F6E4C)
+                          : const Color(0xFFB7E6C8))
+                    : AppColors.border.withValues(alpha: isDark ? 0.95 : 0.75),
               ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x08000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 6),
-                ),
-              ],
+              boxShadow: cardShadow,
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: marked
-                        ? const Color(0xFFE8FBF2)
-                        : const Color(0xFFEAF1FF),
-                    borderRadius: BorderRadius.circular(14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconBackground,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      marked
+                          ? Icons.check_circle_rounded
+                          : Icons.description_rounded,
+                      color: iconColor,
+                      size: 24,
+                    ),
                   ),
-                  child: Icon(
-                    marked
-                        ? Icons.check_circle_rounded
-                        : Icons.description_rounded,
-                    color: marked
-                        ? const Color(0xFF20B26B)
-                        : const Color(0xFF4C8DFF),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        topic.title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.text,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                topic.title,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.text,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                         ),
-                      ),
-                    ],
+                        if (hasProgress) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '$correctCount ${strings.t('correct_short')} · $wrongCount ${strings.t('wrong_short')} · $unansweredCount ${strings.t('unanswered_short')}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textMuted,
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: progressValue,
+                              minHeight: 4,
+                              backgroundColor: AppColors.surfaceTint,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFFFF4D4F),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: onMarkToggle,
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(
-                    marked
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: marked
-                        ? const Color(0xFF20B26B)
-                        : const Color(0xFFB5B8C0),
-                    size: 24,
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textSoft,
+                    size: 20,
                   ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFB5B8C0),
-                  size: 20,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
     );
   }
 }
-
-const String _markedTopicsStorageKey = 'road_test_marked_topics';
 
 class _TopicsLoader extends StatelessWidget {
   const _TopicsLoader();
@@ -318,9 +399,10 @@ class _TopicsEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final strings = AppStrings.of(context);
+    return Center(
       child: Text(
-        'Mavzular topilmadi',
+        strings.t('no_content'),
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
@@ -339,6 +421,7 @@ class _TopicsError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -348,17 +431,14 @@ class _TopicsError extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.danger,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onRetry,
-              child: const Text('Qayta urinish'),
-            ),
+            FilledButton(onPressed: onRetry, child: Text(strings.t('retry_load'))),
           ],
         ),
       ),

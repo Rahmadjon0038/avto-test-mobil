@@ -1,12 +1,20 @@
+import 'dart:async';
+
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
+import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/ticket_summary.dart';
 import '../models/topic_question.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
+import '../services/offline_cache_store.dart';
 import '../services/question_page_settings_store.dart';
+import '../services/ticket_test_progress_store.dart';
+import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_swipe_detector.dart';
 
@@ -29,13 +37,17 @@ class TicketTestPage extends StatefulWidget {
 class _TicketTestPageState extends State<TicketTestPage> {
   late Future<List<TopicQuestion>> _questionsFuture;
   final List<int?> _answers = <int?>[];
+  TicketTestDraft? _savedDraft;
+  int? _shuffleSeed;
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _resultShown = false;
   bool _shuffleQuestions = false;
   bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
+  final Map<String, String> _audioOverrides = {};
   late String _accessToken;
+  String? _languageCode;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _questionCardKey = GlobalKey();
 
@@ -43,7 +55,26 @@ class _TicketTestPageState extends State<TicketTestPage> {
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
+    _languageCode = AppLanguageStore.currentCode;
     _questionsFuture = _loadQuestions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentLanguage = AppLanguageScope.of(context).languageCode;
+    if (_languageCode == currentLanguage) return;
+    _languageCode = currentLanguage;
+    setState(() {
+      _questionsFuture = _loadQuestions();
+      _answers.clear();
+      _savedDraft = null;
+      _shuffleSeed = null;
+      _currentIndex = 0;
+      _selectedIndex = null;
+      _resultShown = false;
+      _loadedQuestions = null;
+    });
   }
 
   Future<List<TopicQuestion>> _loadQuestions() async {
@@ -51,16 +82,30 @@ class _TicketTestPageState extends State<TicketTestPage> {
     if (!mounted) return const <TopicQuestion>[];
     _shuffleQuestions = settings.shuffleQuestions;
     _autoAdvanceEnabled = settings.autoAdvance;
+    final savedProgress = await TicketTestProgressStore.load(widget.ticket.id);
+    if (!mounted) return const <TopicQuestion>[];
+    _savedDraft = null;
+    _shuffleSeed = _shuffleQuestions
+        ? savedProgress?.draft?.shuffleSeed ??
+              DateTime.now().microsecondsSinceEpoch
+        : null;
+    _resultShown = false;
+    if (savedProgress?.draft != null) {
+      await TicketTestProgressStore.clearDraft(widget.ticket.id);
+    }
 
     try {
       final questions = await ApiClient.ticketQuestions(
         accessToken: _accessToken,
         ticketId: widget.ticket.id,
       );
-      final result = List<TopicQuestion>.from(questions);
-      if (_shuffleQuestions) {
-        result.shuffle();
-      }
+      unawaited(
+        OfflineCacheStore.prefetchAudioUrls(
+          audioUrls: questions.map((question) => question.audio),
+        ),
+      );
+      final result = _prepareQuestions(questions, _savedDraft);
+      _restoreQuestionState(result, _savedDraft);
       return result;
     } on ApiException catch (error) {
       final refreshToken = widget.session.refreshToken;
@@ -79,11 +124,105 @@ class _TicketTestPageState extends State<TicketTestPage> {
       });
       widget.onSessionUpdated?.call(active);
 
-      return ApiClient.ticketQuestions(
+      final questions = await ApiClient.ticketQuestions(
         accessToken: active.accessToken,
         ticketId: widget.ticket.id,
       );
+      unawaited(
+        OfflineCacheStore.prefetchAudioUrls(
+          audioUrls: questions.map((question) => question.audio),
+        ),
+      );
+      final result = _prepareQuestions(questions, _savedDraft);
+      _restoreQuestionState(result, _savedDraft);
+      return result;
     }
+  }
+
+  String _audioUrlForQuestion(TopicQuestion question) {
+    return _audioOverrides[question.id] ?? question.audio;
+  }
+
+  void _updateQuestionAudio(String questionId, String? audioUrl) {
+    if (!mounted) return;
+    setState(() {
+      final value = audioUrl?.trim() ?? '';
+      if (value.isEmpty) {
+        _audioOverrides.remove(questionId);
+      } else {
+        _audioOverrides[questionId] = value;
+      }
+    });
+  }
+
+  List<TopicQuestion> _prepareQuestions(
+    List<TopicQuestion> questions,
+    TicketTestDraft? draft,
+  ) {
+    final result = List<TopicQuestion>.from(questions);
+    final orderIds = draft?.questionOrderIds;
+    if (orderIds != null &&
+        orderIds.length == result.length &&
+        orderIds.isNotEmpty) {
+      final byId = <String, TopicQuestion>{
+        for (final question in result) question.id.trim(): question,
+      };
+      final ordered = <TopicQuestion>[];
+      var matches = true;
+      for (final id in orderIds) {
+        final question = byId[id.trim()];
+        if (question == null) {
+          matches = false;
+          break;
+        }
+        ordered.add(question);
+      }
+      if (matches && ordered.length == result.length) {
+        result
+          ..clear()
+          ..addAll(ordered);
+      }
+    } else if (_shuffleQuestions) {
+      final seed = _shuffleSeed ?? DateTime.now().microsecondsSinceEpoch;
+      result.shuffle(math.Random(seed));
+    }
+
+    if (_shuffleQuestions) {
+      final seed = _shuffleSeed ?? DateTime.now().microsecondsSinceEpoch;
+      return result
+          .map((question) => _shuffleQuestionOptions(question, seed))
+          .toList();
+    }
+    return result;
+  }
+
+  void _restoreQuestionState(
+    List<TopicQuestion> questions,
+    TicketTestDraft? draft,
+  ) {
+    final answers = List<int?>.filled(questions.length, null);
+    if (draft != null) {
+      for (var index = 0; index < questions.length; index++) {
+        final questionId = questions[index].id.trim();
+        final answer = draft.answersByQuestionId[questionId];
+        if (answer != null) {
+          answers[index] = answer;
+        }
+      }
+    }
+
+    setState(() {
+      _loadedQuestions = questions;
+      _answers
+        ..clear()
+        ..addAll(answers);
+      final maxIndex = questions.isEmpty ? 0 : questions.length - 1;
+      _currentIndex = draft == null
+          ? 0
+          : draft.currentIndex.clamp(0, maxIndex).toInt();
+      _selectedIndex = _answerFor(_currentIndex);
+      _resultShown = draft?.completed ?? false;
+    });
   }
 
   @override
@@ -137,7 +276,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                     Row(
                       children: [
                         Material(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           shape: const CircleBorder(),
                           child: InkWell(
                             onTap: () => Navigator.of(context).pop(),
@@ -158,7 +297,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                 widget.ticket.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.text,
@@ -167,7 +306,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                               const SizedBox(height: 4),
                               Text(
                                 '${_currentIndex + 1}/${questions.length} savol',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12.5,
                                   color: AppColors.textMuted,
                                   fontWeight: FontWeight.w600,
@@ -225,6 +364,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                   _currentIndex = index;
                                   _selectedIndex = _answerFor(_currentIndex);
                                 });
+                                _persistDraft();
                                 _scrollCurrentQuestionIntoView();
                               },
                             ),
@@ -234,7 +374,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(22),
                                 border: Border.all(
                                   color: AppColors.border.withValues(
@@ -254,7 +394,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                 children: [
                                   Text(
                                     question.text,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
                                       height: 1.28,
                                       fontWeight: FontWeight.w800,
@@ -284,10 +424,10 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                         ? const Color(0xFFCFF0D9)
                                         : selected
                                         ? const Color(0xFFF4C5C5)
-                                        : Colors.white
+                                        : AppColors.surface
                                   : selected
                                   ? AppColors.surfaceTint
-                                  : Colors.white;
+                                  : AppColors.surface;
                               final borderColor = showResult
                                   ? isCorrect
                                         ? const Color(0xFF6CBF86)
@@ -303,7 +443,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: Material(
-                                  color: Colors.white,
+                                  color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(18),
                                   child: InkWell(
                                     onTap: locked
@@ -347,7 +487,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                                   ? const Color(0xFF21A65B)
                                                   : showResult && selected
                                                   ? const Color(0xFFD64545)
-                                                  : const Color(0xFFE9EDF6),
+                                                  : AppColors.surfaceSoft,
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -402,7 +542,18 @@ class _TicketTestPageState extends State<TicketTestPage> {
                           ? question.options.first
                           : '',
                       explanation: question.explanation,
-                      audioUrl: question.audio,
+                      audioUrl: _audioUrlForQuestion(question),
+                      audioAdminContext: widget.session.isAdmin
+                          ? QuestionAudioAdminContext(
+                              accessToken: _accessToken,
+                              sourceKind: 'ticket',
+                              sourceId: widget.ticket.id.toString(),
+                              questionId: question.id,
+                            )
+                          : null,
+                      onAudioChanged: (updatedUrl) {
+                        _updateQuestionAudio(question.id, updatedUrl);
+                      },
                       onFinish: locked
                           ? () => _showLockedRestartModal()
                           : () => _finishNow(questions),
@@ -419,55 +570,62 @@ class _TicketTestPageState extends State<TicketTestPage> {
   }
 
   String _questionImageUrl(TopicQuestion question) {
-    final image = question.image.trim();
-    if (image.isEmpty) return 'assets/default.png';
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image;
-    }
-    if (image.startsWith('/')) {
-      return '$apiBaseUrl$image';
-    }
-    return 'assets/default.png';
+    return resolveQuestionImageUrl(question.image);
   }
 
   Widget _buildQuestionImage(TopicQuestion question) {
     final imageUrl = _questionImageUrl(question);
+    const imageHeight = 220.0;
     if (imageUrl == 'assets/default.png') {
-      return Image.asset(
-        imageUrl,
+      return SizedBox(
         width: double.infinity,
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.center,
+        height: imageHeight,
+        child: Image.asset(
+          imageUrl,
+          width: double.infinity,
+          height: imageHeight,
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+        ),
       );
     }
 
-    return Image.network(
-      imageUrl,
+    return SizedBox(
       width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
+      height: imageHeight,
+      child: Image.network(
+        imageUrl,
+        width: double.infinity,
+        height: imageHeight,
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: double.infinity,
+            height: imageHeight,
+            color: AppColors.surfaceSoft,
+            alignment: Alignment.center,
             child: SizedBox(
               height: 28,
               width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/default.png',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-        );
-      },
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            'assets/default.png',
+            width: double.infinity,
+            height: imageHeight,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          );
+        },
+      ),
     );
   }
 
@@ -481,10 +639,37 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _answers.add(null);
     }
     _answers[questionIndex] = answerIndex;
+    _persistDraft();
     final questions = _loadedQuestions;
     if (questions != null) {
       _syncProgress(questions, silent: true);
     }
+  }
+
+  Future<void> _persistDraft({bool completed = false}) async {
+    final questions = _loadedQuestions;
+    if (questions == null || questions.isEmpty) return;
+
+    final payload = <String, int>{};
+    for (var index = 0; index < questions.length; index++) {
+      if (index >= _answers.length) continue;
+      final answer = _answers[index];
+      final questionId = questions[index].id.trim();
+      if (answer != null && questionId.isNotEmpty) {
+        payload[questionId] = answer;
+      }
+    }
+
+    await TicketTestProgressStore.saveDraft(
+      ticketId: widget.ticket.id,
+      draft: TicketTestDraft(
+        questionOrderIds: questions.map((item) => item.id.trim()).toList(),
+        answersByQuestionId: payload,
+        currentIndex: _currentIndex,
+        completed: completed,
+        shuffleSeed: _shuffleQuestions ? _shuffleSeed : null,
+      ),
+    );
   }
 
   void _goToNextQuestion() {
@@ -494,6 +679,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _currentIndex += 1;
       _selectedIndex = _answerFor(_currentIndex);
     });
+    _persistDraft();
     _scrollCurrentQuestionIntoView();
   }
 
@@ -503,16 +689,19 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _currentIndex -= 1;
       _selectedIndex = _answerFor(_currentIndex);
     });
+    _persistDraft();
     _scrollCurrentQuestionIntoView();
   }
 
   Future<void> _restartTest() async {
+    await TicketTestProgressStore.clearDraft(widget.ticket.id);
     setState(() {
       _currentIndex = 0;
       _selectedIndex = null;
       _answers.clear();
       _resultShown = false;
       _loadedQuestions = null;
+      _savedDraft = null;
       _questionsFuture = _loadQuestions();
     });
   }
@@ -554,18 +743,76 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
     final correct = _countCorrect(questions, _answers);
     final total = questions.length;
-    final wrong = total - correct;
+    final answered = _countAnswered(questions, _answers);
+    final wrong = answered - correct;
+    final unanswered = total - answered;
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
     await _syncProgress(questions);
+    final draft = TicketTestDraft(
+      questionOrderIds: questions.map((item) => item.id.trim()).toList(),
+      answersByQuestionId: _answersByQuestionId(questions),
+      currentIndex: _currentIndex,
+      completed: true,
+      shuffleSeed: _shuffleQuestions ? _shuffleSeed : null,
+    );
+    await TicketTestProgressStore.saveResult(
+      ticketId: widget.ticket.id,
+      draft: draft,
+      result: TicketTestResult(
+        correct: correct,
+        wrong: wrong,
+        total: total,
+        unanswered: unanswered,
+        percent: percent,
+        updatedAt: DateTime.now(),
+      ),
+    );
     if (!_resultShown && mounted) {
       _resultShown = true;
       await _showResultModal(
         correct: correct,
         wrong: wrong,
         total: total,
+        unanswered: unanswered,
         percent: percent,
       );
     }
+  }
+
+  TopicQuestion _shuffleQuestionOptions(TopicQuestion question, int seed) {
+    if (question.options.length < 2) return question;
+
+    final entries = question.options.asMap().entries.toList();
+    final random = math.Random(seed ^ _stableHash(question.id.trim()));
+    entries.shuffle(random);
+
+    final options = entries.map((entry) => entry.value).toList();
+    final newCorrectIndex = entries.indexWhere(
+      (entry) => entry.key == question.correctIndex,
+    );
+
+    return TopicQuestion(
+      id: question.id,
+      text: question.text,
+      options: options,
+      correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
+      explanation: question.explanation,
+      image: question.image,
+      audio: question.audio,
+    );
+  }
+
+  int _stableHash(String value) {
+    var hash = 0;
+    for (final codeUnit in value.codeUnits) {
+      hash = 0x1fffffff & (hash + codeUnit);
+      hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+      hash ^= (hash >> 6);
+    }
+    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
+    hash ^= (hash >> 11);
+    hash = 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+    return hash;
   }
 
   Map<String, int> _answersByQuestionId(List<TopicQuestion> questions) {
@@ -601,7 +848,17 @@ class _TicketTestPageState extends State<TicketTestPage> {
         if (!silent && mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(error.message)));
+          ).showSnackBar(
+            SnackBar(
+              content: Text(
+                friendlyErrorMessage(
+                  context,
+                  error.message,
+                  fallbackKey: 'load_failed',
+                ),
+              ),
+            ),
+          );
         }
         return;
       }
@@ -621,7 +878,17 @@ class _TicketTestPageState extends State<TicketTestPage> {
       if (!silent && mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(
+              friendlyErrorMessage(
+                context,
+                error,
+                fallbackKey: 'load_failed',
+              ),
+            ),
+          ),
+        );
       }
     }
   }
@@ -637,26 +904,39 @@ class _TicketTestPageState extends State<TicketTestPage> {
     return correct;
   }
 
+  int _countAnswered(List<TopicQuestion> questions, List<int?> answers) {
+    var answered = 0;
+    for (var index = 0; index < questions.length; index++) {
+      final answer = index < answers.length ? answers[index] : null;
+      if (answer != null) {
+        answered += 1;
+      }
+    }
+    return answered;
+  }
+
   Future<void> _showResultModal({
     required int correct,
     required int wrong,
     required int total,
+    required int unanswered,
     required int percent,
   }) {
+    final pageContext = context;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: false,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (modalContext) {
         return MediaQuery.removePadding(
-          context: context,
+          context: modalContext,
           removeBottom: true,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
             ),
             child: Column(
@@ -674,7 +954,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Natija',
                   style: TextStyle(
                     fontSize: 18,
@@ -682,21 +962,56 @@ class _TicketTestPageState extends State<TicketTestPage> {
                     color: AppColors.text,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _ResultRow(label: 'To‘g‘ri javoblar', value: '$correct'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Noto‘g‘ri javoblar', value: '$wrong'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Jami savollar', value: '$total'),
-                const SizedBox(height: 10),
-                _ResultRow(label: 'Foiz', value: '$percent%'),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ResultPieChart(
+                      correct: correct,
+                      wrong: wrong,
+                      total: total,
+                      unanswered: unanswered,
+                      percent: percent,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _ResultRow(
+                            label: 'To‘g‘ri javoblar',
+                            value: '$correct',
+                          ),
+                          const SizedBox(height: 10),
+                          _ResultRow(
+                            label: 'Noto‘g‘ri javoblar',
+                            value: '$wrong',
+                          ),
+                          const SizedBox(height: 10),
+                          _ResultRow(label: 'Jami savollar', value: '$total'),
+                          const SizedBox(height: 10),
+                          _ResultRow(
+                            label: 'Belgilanmagan',
+                            value: '$unanswered',
+                          ),
+                          const SizedBox(height: 10),
+                          _ResultRow(label: 'Foiz', value: '$percent%'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Yopish'),
+                    onPressed: () {
+                      Navigator.of(modalContext).pop();
+                      if (pageContext.mounted) {
+                        Navigator.of(pageContext).pop(true);
+                      }
+                    },
+                    child: Text('Yopish'),
                   ),
                 ),
               ],
@@ -867,7 +1182,7 @@ class _ResultRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
+        color: AppColors.surfaceSoft,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -875,7 +1190,7 @@ class _ResultRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textMuted,
@@ -885,7 +1200,7 @@ class _ResultRow extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: AppColors.text,
@@ -897,6 +1212,125 @@ class _ResultRow extends StatelessWidget {
   }
 }
 
+class ResultPieChart extends StatelessWidget {
+  const ResultPieChart({
+    super.key,
+    required this.correct,
+    required this.wrong,
+    required this.total,
+    required this.unanswered,
+    required this.percent,
+  });
+
+  final int correct;
+  final int wrong;
+  final int total;
+  final int unanswered;
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 138,
+      child: SizedBox(
+        width: 120,
+        height: 120,
+        child: CustomPaint(
+          painter: _ResultPiePainter(
+            correct: correct,
+            wrong: wrong,
+            unanswered: unanswered,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$percent%',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'progress',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultPiePainter extends CustomPainter {
+  _ResultPiePainter({
+    required this.correct,
+    required this.wrong,
+    required this.unanswered,
+  });
+
+  final int correct;
+  final int wrong;
+  final int unanswered;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = correct + wrong + unanswered;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 6;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final basePaint = Paint()
+      ..color = AppColors.surfaceSoft
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, basePaint);
+
+    if (total <= 0) {
+      final emptyPaint = Paint()
+        ..color = AppColors.border
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, emptyPaint);
+      return;
+    }
+
+    final segments = <({int value, Color color})>[
+      (value: correct, color: const Color(0xFF21A65B)),
+      (value: wrong, color: const Color(0xFFD64545)),
+      (value: unanswered, color: const Color(0xFFB5B8C0)),
+    ];
+
+    var start = -math.pi / 2;
+    for (final segment in segments) {
+      if (segment.value <= 0) continue;
+      final sweep = (segment.value / total) * math.pi * 2;
+      final paint = Paint()
+        ..color = segment.color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(rect, start, sweep, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ResultPiePainter oldDelegate) {
+    return oldDelegate.correct != correct ||
+        oldDelegate.wrong != wrong ||
+        oldDelegate.unanswered != unanswered;
+  }
+}
+
 class _SettingsButton extends StatelessWidget {
   const _SettingsButton({required this.onTap});
 
@@ -905,15 +1339,15 @@ class _SettingsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.surface,
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: const SizedBox(
+        child: SizedBox(
           width: 46,
           height: 46,
-          child: Icon(Icons.settings_outlined, size: 22),
+          child: Icon(Icons.settings_outlined, size: 22, color: AppColors.text),
         ),
       ),
     );
@@ -945,10 +1379,10 @@ class _EmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFECEB),
+                color: AppColors.surfaceSoft,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.menu_book_rounded,
                 color: AppColors.danger,
                 size: 34,
@@ -958,7 +1392,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
@@ -968,7 +1402,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: AppColors.textMuted,
