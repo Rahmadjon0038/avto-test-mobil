@@ -672,6 +672,49 @@ class ApiClient {
     return body;
   }
 
+  static Future<void> deleteMistake({
+    required String accessToken,
+    required String questionKey,
+  }) async {
+    final response = await http.delete(
+      _uri('/api/mistakes/${Uri.encodeComponent(questionKey)}'),
+      headers: _jsonHeaders(accessToken: accessToken),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Savol o‘chirilmadi',
+      );
+    }
+  }
+
+  static Future<void> syncMistake({
+    required String accessToken,
+    required Map<String, dynamic> question,
+    required int wrongAnswer,
+  }) async {
+    final response = await http.post(
+      _uri('/api/mistakes/sync'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({
+        'question': question,
+        'wrongAnswer': wrongAnswer,
+        'kind': question['kind'],
+        'sourceId': question['sourceId'],
+        'sourceTitle': question['sourceTitle'],
+        'questionIndex': question['questionIndex'],
+      }),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        body['error']?.toString() ?? 'Xato saqlanmadi',
+      );
+    }
+  }
+
   static Future<List<TopicQuestion>> ticketQuestions({
     required String accessToken,
     required String ticketId,

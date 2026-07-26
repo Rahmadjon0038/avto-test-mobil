@@ -79,6 +79,7 @@ class _VideosPageState extends State<VideosPage> {
             title: video.topicTitle,
             completed: false,
             questionCount: 0,
+            progress: null,
           ),
           onSessionUpdated: widget.onSessionUpdated,
         ),
@@ -89,10 +90,14 @@ class _VideosPageState extends State<VideosPage> {
   Future<void> _openVideo(VideoLesson video) async {
     setState(() {
       _activeVideo = video;
-      _playbackUrl = "";
+      _playbackUrl = video.playbackUrl;
       _playbackError = "";
-      _loadingPlayback = true;
+      _loadingPlayback = video.playbackUrl.isEmpty;
     });
+
+    if (video.playbackUrl.isNotEmpty) {
+      return;
+    }
 
     try {
       final url = await ApiClient.videoPlaybackUrl(
@@ -345,12 +350,34 @@ class _VideoCardState extends State<_VideoCard> {
     _error = false;
 
     try {
-      final videoController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.playbackUrl),
-        formatHint: VideoFormat.hls,
-        httpHeaders: _videoRequestHeaders,
-      );
-      await videoController.initialize().timeout(const Duration(seconds: 20));
+      final lowerUrl = widget.playbackUrl.toLowerCase();
+      final isHlsSource = lowerUrl.contains('.m3u8');
+
+      Future<VideoPlayerController> initController({
+        required bool withFormatHint,
+      }) async {
+        final uri = Uri.parse(widget.playbackUrl);
+        final controller = VideoPlayerController.networkUrl(
+          uri,
+          formatHint: withFormatHint && isHlsSource ? VideoFormat.hls : null,
+          httpHeaders: _videoRequestHeaders,
+        );
+        try {
+          await controller.initialize().timeout(const Duration(seconds: 30));
+          return controller;
+        } catch (_) {
+          await controller.dispose();
+          rethrow;
+        }
+      }
+
+      VideoPlayerController videoController;
+      try {
+        videoController = await initController(withFormatHint: true);
+      } catch (_) {
+        videoController = await initController(withFormatHint: false);
+      }
+
       final chewieController = ChewieController(
         videoPlayerController: videoController,
         autoPlay: true,
@@ -410,21 +437,21 @@ class _VideoCardState extends State<_VideoCard> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: widget.onOpenVideo,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRect(
-              child: Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 10.2,
-                    child: widget.isActive
-                        ? _buildPlayer()
-                        : Stack(
+    final card = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRect(
+            child: Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 10.2,
+                  child: widget.isActive
+                      ? _buildPlayer()
+                      : InkWell(
+                          onTap: widget.onOpenVideo,
+                          child: Stack(
                             fit: StackFit.expand,
                             children: [
                               if (widget.video.videoThumbnail.isNotEmpty)
@@ -441,8 +468,8 @@ class _VideoCardState extends State<_VideoCard> {
                                         size: 64,
                                       ),
                                     );
-                                },
-                              )
+                                  },
+                                )
                               else
                                 Container(
                                   color: AppColors.surfaceTint,
@@ -469,46 +496,48 @@ class _VideoCardState extends State<_VideoCard> {
                               ),
                             ],
                           ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: InkWell(
+              onTap: widget.onOpenTopic,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.video.title.isNotEmpty
+                          ? widget.video.title
+                          : widget.video.topicTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16.8,
+                        height: 1.24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted,
+                    size: 28,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0),
-              child: InkWell(
-                onTap: widget.onOpenTopic,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.video.title.isNotEmpty
-                            ? widget.video.title
-                            : widget.video.topicTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16.8,
-                          height: 1.24,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.text,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textMuted,
-                      size: 28,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+
+    return card;
   }
 
   Widget _buildPlayer() {
@@ -553,38 +582,46 @@ class _VideoCardState extends State<_VideoCard> {
       );
     }
 
+    if (_error) {
+      return Container(
+        color: AppColors.surfaceSoft,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppStrings.of(context).t('video_failed'),
+              style: TextStyle(color: AppColors.text),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _disposePlayer();
+                });
+                _ensurePlayer();
+              },
+              child: Text(AppStrings.of(context).t('videos_retry')),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_chewieController == null || !_ready) {
-      final future = _ensurePlayer();
-      return FutureBuilder<void>(
-        future: future,
-        builder: (context, snapshot) {
-          if (_error) {
-            return Container(
-              color: AppColors.surfaceSoft,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                AppStrings.of(context).t('video_failed'),
-                style: TextStyle(color: AppColors.text),
-              ),
-            );
-          }
-          if (_chewieController == null || !_ready) {
-            return Container(
-              color: AppColors.surfaceSoft,
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: AppColors.primary,
-                ),
-              ),
-            );
-          }
-          return Chewie(controller: _chewieController!);
-        },
+      _ensurePlayer();
+      return Container(
+        color: AppColors.surfaceSoft,
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.4,
+            color: AppColors.primary,
+          ),
+        ),
       );
     }
 

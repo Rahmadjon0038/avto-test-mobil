@@ -26,6 +26,7 @@ class _TopicsPageState extends State<TopicsPage> {
   late AuthSession _activeSession;
   late String _accessToken;
   String? _languageCode;
+  final ScrollController _scrollController = ScrollController();
   final Map<String, TopicProgressSummary> _progressByTopicId = {};
   bool _progressHydrationQueued = false;
 
@@ -36,6 +37,12 @@ class _TopicsPageState extends State<TopicsPage> {
     _accessToken = _activeSession.accessToken;
     _languageCode = AppLanguageStore.currentCode;
     _topicsFuture = _loadTopics();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -81,10 +88,7 @@ class _TopicsPageState extends State<TopicsPage> {
     final results = await Future.wait(
       topics.map((topic) async {
         try {
-          final progress = await ApiClient.topicProgress(
-            accessToken: _accessToken,
-            topicId: topic.id,
-          );
+          final progress = await _loadTopicProgress(topic.id);
           return MapEntry<String, TopicProgressSummary?>(topic.id, progress);
         } catch (_) {
           return MapEntry<String, TopicProgressSummary?>(topic.id, null);
@@ -100,6 +104,35 @@ class _TopicsPageState extends State<TopicsPage> {
         }
       }
     });
+  }
+
+  Future<TopicProgressSummary?> _loadTopicProgress(String topicId) async {
+    try {
+      return await ApiClient.topicProgress(
+        accessToken: _accessToken,
+        topicId: topicId,
+      );
+    } on ApiException catch (error) {
+      final refreshToken = _activeSession.refreshToken;
+      if (error.statusCode != 401 ||
+          refreshToken == null ||
+          refreshToken.isEmpty) {
+        rethrow;
+      }
+
+      final refreshed = await ApiClient.refresh(refreshToken);
+      if (!mounted) return null;
+      final active = refreshed.copyWith(user: _activeSession.user);
+      setState(() {
+        _activeSession = active;
+        _accessToken = active.accessToken;
+      });
+      widget.onSessionUpdated?.call(active);
+      return await ApiClient.topicProgress(
+        accessToken: active.accessToken,
+        topicId: topicId,
+      );
+    }
   }
 
   @override
@@ -123,10 +156,7 @@ class _TopicsPageState extends State<TopicsPage> {
                     }
                     if (snapshot.hasError) {
                       return _TopicsError(
-                        message: friendlyErrorMessage(
-                          context,
-                          snapshot.error,
-                        ),
+                        message: friendlyErrorMessage(context, snapshot.error),
                         onRetry: () {
                           setState(() {
                             _topicsFuture = _loadTopics();
@@ -150,6 +180,8 @@ class _TopicsPageState extends State<TopicsPage> {
                     }
 
                     return ListView.separated(
+                      key: const PageStorageKey<String>('topics-list'),
+                      controller: _scrollController,
                       itemCount: topics.length,
                       physics: const BouncingScrollPhysics(),
                       separatorBuilder: (context, index) =>
@@ -159,18 +191,20 @@ class _TopicsPageState extends State<TopicsPage> {
                         return _TopicCard(
                           topic: topic,
                           totalCount: topic.questionCount,
-                          progress: _progressByTopicId[topic.id],
+                          progress:
+                              topic.progress ?? _progressByTopicId[topic.id],
                           marked: topic.completed,
                           onTap: () async {
-                            final shouldRefresh = await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => TopicTestPage(
-                                  session: _activeSession,
-                                  topic: topic,
-                                  onSessionUpdated: widget.onSessionUpdated,
-                                ),
-                              ),
-                            );
+                            final shouldRefresh = await Navigator.of(context)
+                                .push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (_) => TopicTestPage(
+                                      session: _activeSession,
+                                      topic: topic,
+                                      onSessionUpdated: widget.onSessionUpdated,
+                                    ),
+                                  ),
+                                );
                             if (shouldRefresh != false && mounted) {
                               setState(() {
                                 _topicsFuture = _loadTopics();
@@ -270,14 +304,16 @@ class _TopicCard extends StatelessWidget {
               color: Color(0x08000000),
               blurRadius: 12,
               offset: Offset(0, 6),
-              ),
+            ),
           ];
     final answeredCount = progress?.answers.length ?? 0;
     final correctCount = progress?.score ?? 0;
     final wrongCount = math.max(0, answeredCount - correctCount);
     final unansweredCount = math.max(0, totalCount - answeredCount);
     final hasProgress = totalCount > 0;
-    final progressValue = hasProgress ? (correctCount / totalCount).clamp(0.0, 1.0) : 0.0;
+    final progressValue = hasProgress
+        ? (correctCount / totalCount).clamp(0.0, 1.0)
+        : 0.0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -304,83 +340,83 @@ class _TopicCard extends StatelessWidget {
               ),
               boxShadow: cardShadow,
             ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: iconBackground,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      marked
-                          ? Icons.check_circle_rounded
-                          : Icons.description_rounded,
-                      color: iconColor,
-                      size: 24,
-                    ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                topic.title,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.text,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                        ),
-                        if (hasProgress) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            '$correctCount ${strings.t('correct_short')} · $wrongCount ${strings.t('wrong_short')} · $unansweredCount ${strings.t('unanswered_short')}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textMuted,
-                              height: 1.15,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: progressValue,
-                              minHeight: 4,
-                              backgroundColor: AppColors.surfaceTint,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFFFF4D4F),
+                  child: Icon(
+                    marked
+                        ? Icons.check_circle_rounded
+                        : Icons.description_rounded,
+                    color: iconColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              topic.title,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.text,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                         ],
+                      ),
+                      if (hasProgress) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '$correctCount ${strings.t('correct_short')} · $wrongCount ${strings.t('wrong_short')} · $unansweredCount ${strings.t('unanswered_short')}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textMuted,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: progressValue,
+                            minHeight: 4,
+                            backgroundColor: AppColors.surfaceTint,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFFF4D4F),
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.textSoft,
-                    size: 20,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textSoft,
+                  size: 20,
+                ),
+              ],
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -438,7 +474,10 @@ class _TopicsError extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            FilledButton(onPressed: onRetry, child: Text(strings.t('retry_load'))),
+            FilledButton(
+              onPressed: onRetry,
+              child: Text(strings.t('retry_load')),
+            ),
           ],
         ),
       ),

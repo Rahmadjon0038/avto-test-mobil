@@ -19,10 +19,11 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		003E169D6A6898B6795B9CFB2742F924 /* FPPPackageInfoPlusPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = B2F9A2852B941D5CDD2BA278152952A4 /* FPPPackageInfoPlusPlugin.m */; };
 		03FF65672874530A3E9AE6BAB1764A4A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9EE00D34B275026D4656C738BED5A001 /* Cocoa.framework */; };
 		057166EA5B9156884B5FBF7C9ED59682 /* RecordPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DB72D6F074EBB60114ADA8517284291E /* RecordPlugin.m */; };
 		0711D434DAB1A32B420A45A9745E2F71 /* FVPNativeVideoView.h in Headers */ = {isa = PBXBuildFile; fileRef = 0758136C1EBDFF9130C9ABBF9B9A850B /* FVPNativeVideoView.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		077B2AA269F0444075CFE925A691CEB5 /* package_info_plus-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 2AECDD04C8C986120A2EE9CAD25AD356 /* package_info_plus-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		077B2AA269F0444075CFE925A691CEB5 /* package_info_plus-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = B48600C7E667153A92682F0B9DC76648 /* package_info_plus-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		07A266117F24FA258F255B695C8B4851 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9EE00D34B275026D4656C738BED5A001 /* Cocoa.framework */; };
 		09008EB1D9ECD28C185DC5465B8037AC /* FVPAVFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 5C3E73F632123343E81B8002E2D59FC6 /* FVPAVFactory.m */; };
 		0B0D60402F3079228756AF0FFD8DDE39 /* video_player_avfoundation-video_player_avfoundation_privacy in Resources */ = {isa = PBXBuildFile; fileRef = 337652A9806A3FED0B8DC4CD2DE81878 /* video_player_avfoundation-video_player_avfoundation_privacy */; };
@@ -32,7 +33,6 @@
 		0FCCC0545E7C921B0B6F2E30FACEC6CB /* messages.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6C97C5DD9BBDD5993CF04F58D5CE3E /* messages.g.swift */; };
 		138460986AF207F7133F77B7880CD1B8 /* wakelock_plus-wakelock_plus in Resources */ = {isa = PBXBuildFile; fileRef = 65BF1E62409A8FB4AD8291729ABB646B /* wakelock_plus-wakelock_plus */; };
 		17470B35E34DD088C4831DB2BDF496CB /* ScrollViewProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735540B94241A45CF7B26312F4FCE2FF /* ScrollViewProxyAPIDelegate.swift */; };
-		19F6C50ECCDC0AF4EA694254F503E21C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7365F2C6FE6E0B9B9D2074CB4AFC3E3A /* PrivacyInfo.xcprivacy */; };
 		1B3E665D67EF458CE564858F04E16C4E /* FVPFrameUpdater.m in Sources */ = {isa = PBXBuildFile; fileRef = B3D6601666BE7690510297F22E7CD489 /* FVPFrameUpdater.m */; };
 		1CFBF717F79B7FA5635480736DE03697 /* UrlLauncherPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1165ABF6320437D8F4627708983FDAA /* UrlLauncherPlugin.swift */; };
 		1EC3A37775D20858F470BFBE466448E3 /* HTTPCookieStoreProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE5D44B4CE13DC50C80BB42FCEF6622 /* HTTPCookieStoreProxyAPIDelegate.swift */; };
@@ -66,14 +66,13 @@
 		5249AD21F427A62F2FFFBB15F511D049 /* SecurityOriginProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB6545FC66C486898371142505BFD76 /* SecurityOriginProxyAPIDelegate.swift */; };
 		54225EC9BC331AF079EB8D5FC94D577E /* FVPViewProvider.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F92CE2A618B26106D6013262EE9DE53 /* FVPViewProvider.m */; };
 		5744747E2E6547F65570CE9F46A569E3 /* record_darwin-record_darwin_privacy in Resources */ = {isa = PBXBuildFile; fileRef = 1687AD4A9479D06965D1C783BC07C2AA /* record_darwin-record_darwin_privacy */; };
-		57638071C86E91584952DE058DEE8583 /* package_info_plus-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = BA37C9A76879ED621A6DE2F710F98DC4 /* package_info_plus-dummy.m */; };
+		57638071C86E91584952DE058DEE8583 /* package_info_plus-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E242BFBC6E6A8624246342F58B3DEFB /* package_info_plus-dummy.m */; };
 		5BB961689D18781B0CEA1D25343BB303 /* AuthenticationChallengeResponseProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE73943F777984E7D66AF46E55A3095 /* AuthenticationChallengeResponseProxyAPIDelegate.swift */; };
 		5DB513CAD4EA0BD97B11D9550B683EAE /* audioplayers_darwin-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A297766E2EDAA92E832981304D1FA8 /* audioplayers_darwin-dummy.m */; };
 		60F66FEC6E94CC39916DE84BB2F4678C /* webview_flutter_wkwebview-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 8E56EB7F14F207488EFDCCC6054C4113 /* webview_flutter_wkwebview-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		6131B8EF9EF307FFF71FB0FDCA54A516 /* WebViewFlutterPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11C4B85F2FE055927272D38FC7AF66C8 /* WebViewFlutterPlugin.swift */; };
 		61D3EF9980EE3CF3275B2A1A6B912038 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5EF00F80B60B48B1DFF3C36E3DCF02B5 /* PrivacyInfo.xcprivacy */; };
 		62E59954C7DE5E6D47687CB07E902372 /* PathProviderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BC553A4F9E1AA7317E8A0CE5954303D /* PathProviderPlugin.swift */; };
-		66389811EB580B2BB9C4175D32E00E45 /* FPPPackageInfoPlusPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 631A72AC16F9EDF622D44B8D27E3005B /* FPPPackageInfoPlusPlugin.m */; };
 		6887B4CB5DE969AE079A3DAF84DA8FFD /* FrameInfoProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B510FD93B5EBA796FDAB20A63D51984 /* FrameInfoProxyAPIDelegate.swift */; };
 		68C1C27FD4CD8B3C60927ABBC6552993 /* RecorderDelegateProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BDA58BE08EA446EB246B598D5BB461B /* RecorderDelegateProtocols.swift */; };
 		6AC81CE4F8A10FDAE42A22D89EAE1221 /* messages.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04853F2A830AFE11656E4242DE94ED3C /* messages.g.swift */; };
@@ -116,7 +115,6 @@
 		AB3CBAF0C34944A0C73FEF82CD2AE42D /* url_launcher_macos-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = C93AF6EA084C05E3463FA213E4D54A23 /* url_launcher_macos-dummy.m */; };
 		AB97236BED60801B84D21B7BFFA7D266 /* RecorderMacOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55128C5CB83819245E96A45450154CD0 /* RecorderMacOS.swift */; };
 		AC523945E2A862382DF1FF181229548D /* FVPVideoPlayer_Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 592285E490D3C63F3DF03E36F2A46E6A /* FVPVideoPlayer_Internal.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		ADCCB2912ADD3D28C0B2DA2F40DEA7F4 /* FPPPackageInfoPlusPlugin.h in Headers */ = {isa = PBXBuildFile; fileRef = AC10DAEFDA1095ED4C50EC017DD61334 /* FPPPackageInfoPlusPlugin.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ADEF3E1641030B72546B57F312F5B29A /* FVPAssetProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 63009C26C87484D4E850717633D0D7BD /* FVPAssetProvider.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B256055817E6E119FC36147BF9ECA534 /* NavigationResponseProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 866F49532FFF349889BAD0BAEBCC20A0 /* NavigationResponseProxyAPIDelegate.swift */; };
 		B2FE597A475A99AF2D5BD19E390EB4B9 /* video_player_avfoundation-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = CBAFCA0F827A2C6DA3BCA879F81310DB /* video_player_avfoundation-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -129,6 +127,7 @@
 		BB6F54C13E16E1462AD35BE638B43730 /* FVPTextureBasedVideoPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 500307C69CE4C479E8052CE59EE7C603 /* FVPTextureBasedVideoPlayer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BC1D72D7BA46AB2E5F4E9072E5AB98CA /* WebsiteDataStoreProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 613DFD448A08DAECE7839134EA545F2E /* WebsiteDataStoreProxyAPIDelegate.swift */; };
 		BC88DF68A10DA9B732CADB5A3C0C8D8C /* webview_flutter_wkwebview-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 41833E4A8C2ED66DD7611554080FD0B4 /* webview_flutter_wkwebview-dummy.m */; };
+		BCBCCFFD1CD335EAC0B0F5F4AD21031F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 81524787D1EE30CD2C8CA0C575B630D3 /* PrivacyInfo.xcprivacy */; };
 		BCF54605CC227A3EDE2F1953B154E0C6 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9EE00D34B275026D4656C738BED5A001 /* Cocoa.framework */; };
 		BD11737CF99777D74D137E574DF8BA5E /* GetTrustResultResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A9626760E78934258EAF1129B156CAA /* GetTrustResultResponse.swift */; };
 		C3985987577068B3346CA0C3317AEAFD /* AVAssetTrackUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 5B4D63A58F367F7F08816F5912E7C4EE /* AVAssetTrackUtils.m */; };
@@ -155,6 +154,7 @@
 		EBDB503DCC1B58BFB73FAFCC038A8349 /* Pods-Runner-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = E794494AB90477BA94C681E994ADF341 /* Pods-Runner-dummy.m */; };
 		EC6F20767DB294DEC6DFE4B385985812 /* record_darwin-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = A001D5560A279C7C49EAC1AA72FEA446 /* record_darwin-dummy.m */; };
 		EFFBC53249B996E2C671202C0E8256B1 /* NSObjectProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D119DE02867C28435646233083624B /* NSObjectProxyAPIDelegate.swift */; };
+		F16D9F51E761091123A0AB569B3B749E /* FPPPackageInfoPlusPlugin.h in Headers */ = {isa = PBXBuildFile; fileRef = F01248B77AF5EC6239B83654ED9F31FD /* FPPPackageInfoPlusPlugin.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F282F7BC9303DF6E0FE6E618567C9E7D /* RecordPlugin.h in Headers */ = {isa = PBXBuildFile; fileRef = AA18AAED8B03CAA172CD101071800FCE /* RecordPlugin.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F313C62506F963A382B3BEAF084645FD /* WebpagePreferencesProxyAPIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7293F1F4F22D2FFCE343327FA5A8D3D4 /* WebpagePreferencesProxyAPIDelegate.swift */; };
 		F38365076BCBA2692812B2E89582254F /* AudioPlayerError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219DB4EF522AD9930A7FD8D07E3D913F /* AudioPlayerError.swift */; };
@@ -389,10 +389,11 @@
 		14AEBA185D489AB3CBCFA007710757A3 /* SecWrappers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecWrappers.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/SecWrappers.swift"; sourceTree = "<group>"; };
 		163A707D53693953E4DC7E0DE4C912A4 /* webview_flutter_wkwebview-webview_flutter_wkwebview_privacy */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "webview_flutter_wkwebview-webview_flutter_wkwebview_privacy"; path = webview_flutter_wkwebview_privacy.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1687AD4A9479D06965D1C783BC07C2AA /* record_darwin-record_darwin_privacy */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "record_darwin-record_darwin_privacy"; path = record_darwin_privacy.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		176A9DE8BDC2D238226ED56DCD1044B9 /* package_info_plus-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "package_info_plus-Info.plist"; sourceTree = "<group>"; };
 		190726F6D2C1CED58F6DE1760B335FC0 /* WrappedMediaPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WrappedMediaPlayer.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/audioplayers_darwin-6.4.0/darwin/audioplayers_darwin/Sources/audioplayers_darwin/WrappedMediaPlayer.swift"; sourceTree = "<group>"; };
 		1968CD7F6790F249A39E8B254AD58D43 /* video_player_avfoundation-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "video_player_avfoundation-Info.plist"; sourceTree = "<group>"; };
-		198A9E0FCD7F56DF126BC67E41055189 /* package_info_plus-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "package_info_plus-prefix.pch"; sourceTree = "<group>"; };
 		19AB2BBB6C3B4D952040AACFAFB016EC /* path_provider_foundation-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "path_provider_foundation-prefix.pch"; sourceTree = "<group>"; };
+		1A3BAD4CF660D21AF838CED410586A5C /* package_info_plus-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "package_info_plus-prefix.pch"; sourceTree = "<group>"; };
 		1B136F41D5B5FAE96EA576E768A5771D /* Pods-Runner-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-Runner-acknowledgements.plist"; sourceTree = "<group>"; };
 		1B6C9903C4641847650886C2EB66ED2A /* messages.g.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = messages.g.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/url_launcher_macos-3.2.5/macos/url_launcher_macos/Sources/url_launcher_macos/messages.g.swift"; sourceTree = "<group>"; };
 		1BAF3BBFF30613562919E8F757FF3163 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
@@ -409,15 +410,14 @@
 		271D2BE3B1B30C59ED9A08EA8C2F9723 /* WebKitLibrary.g.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WebKitLibrary.g.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/WebKitLibrary.g.swift"; sourceTree = "<group>"; };
 		2845B54AA8381C74E2A43EC4C27C21A3 /* wakelock_plus-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "wakelock_plus-dummy.m"; sourceTree = "<group>"; };
 		2A815A0FA6AE5C44926635DD3395B999 /* NavigationActionProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationActionProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/NavigationActionProxyAPIDelegate.swift"; sourceTree = "<group>"; };
-		2AECDD04C8C986120A2EE9CAD25AD356 /* package_info_plus-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "package_info_plus-umbrella.h"; sourceTree = "<group>"; };
 		2DB38E3B38647E5A3EAD155E96E47631 /* wakelock_plus-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "wakelock_plus-umbrella.h"; sourceTree = "<group>"; };
+		2E3B2D6FFED7ACB8B2B6E9B80962F4C4 /* package_info_plus.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = package_info_plus.modulemap; sourceTree = "<group>"; };
 		2E7AB111BC97176D7D878BE749341C08 /* RecorderFileDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecorderFileDelegate.swift; path = "../../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/delegate/RecorderFileDelegate.swift"; sourceTree = "<group>"; };
 		2EF6C30C292DD0865EB53010A462164C /* VideoPlayerPluginMessages.g.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VideoPlayerPluginMessages.g.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation/VideoPlayerPluginMessages.g.swift"; sourceTree = "<group>"; };
 		33011DDD98568E3642995B8E871CCC97 /* webview_flutter_wkwebview.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = webview_flutter_wkwebview.release.xcconfig; sourceTree = "<group>"; };
 		3349C118A1154A13DC30D1FA163725C7 /* Utils.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Utils.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/audioplayers_darwin-6.4.0/darwin/audioplayers_darwin/Sources/audioplayers_darwin/Utils.swift"; sourceTree = "<group>"; };
 		337652A9806A3FED0B8DC4CD2DE81878 /* video_player_avfoundation-video_player_avfoundation_privacy */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "video_player_avfoundation-video_player_avfoundation_privacy"; path = video_player_avfoundation_privacy.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		34E2B7CCDB2539F7F1F4D6483A1326F9 /* wakelock_plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = wakelock_plus.release.xcconfig; sourceTree = "<group>"; };
-		34E49392D9AF64E84E5ABC96C19552FC /* package_info_plus-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "package_info_plus-Info.plist"; sourceTree = "<group>"; };
 		3511BABE59EC1CF52847FBFB8ECF7567 /* audioplayers_darwin-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "audioplayers_darwin-Info.plist"; sourceTree = "<group>"; };
 		359C80ECF56908FE3BB94FFB3FBC6F0B /* audioplayers_darwin.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = audioplayers_darwin.debug.xcconfig; sourceTree = "<group>"; };
 		35C7276615A6BCDAAB2F310A85069D6D /* FVPVideoPlayer.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FVPVideoPlayer.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/FVPVideoPlayer.m"; sourceTree = "<group>"; };
@@ -449,7 +449,6 @@
 		522F3D175BCD198CB26C3390289714C2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		54669A15224B06C02D00186E0466EAEF /* video_player_avfoundation.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = video_player_avfoundation.podspec; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation.podspec"; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		55128C5CB83819245E96A45450154CD0 /* RecorderMacOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecorderMacOS.swift; path = "../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/RecorderMacOS.swift"; sourceTree = "<group>"; };
-		553BB41A0564F23CB6CDB181E40A2FE7 /* package_info_plus.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = package_info_plus.podspec; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/macos/package_info_plus.podspec"; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		55C13EDD7E201D71A889791B31B8A36F /* wakelock_plus */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = wakelock_plus; path = wakelock_plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		592285E490D3C63F3DF03E36F2A46E6A /* FVPVideoPlayer_Internal.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FVPVideoPlayer_Internal.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/FVPVideoPlayer_Internal.h"; sourceTree = "<group>"; };
 		59C85BB0E6540E54D6BFC3D6CBC062BA /* StructWrappers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StructWrappers.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/StructWrappers.swift"; sourceTree = "<group>"; };
@@ -458,14 +457,15 @@
 		5C3E73F632123343E81B8002E2D59FC6 /* FVPAVFactory.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FVPAVFactory.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/FVPAVFactory.m"; sourceTree = "<group>"; };
 		5D70328307132BE75344A482E1FDF026 /* SecTrustProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecTrustProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/SecTrustProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		5E0E1486EFCC23EBECF08A3283103729 /* audioplayers_darwin.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = audioplayers_darwin.release.xcconfig; sourceTree = "<group>"; };
+		5E242BFBC6E6A8624246342F58B3DEFB /* package_info_plus-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "package_info_plus-dummy.m"; sourceTree = "<group>"; };
 		5EF00F80B60B48B1DFF3C36E3DCF02B5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/wakelock_plus-1.6.1/macos/wakelock_plus/Sources/wakelock_plus/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		5F208771774011787042F44D4ABDC5DC /* FlutterMacOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = FlutterMacOS.release.xcconfig; sourceTree = "<group>"; };
 		5FE71338F2607962F84B2193F72F46B1 /* ResourceBundle-path_provider_foundation_privacy-path_provider_foundation-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "ResourceBundle-path_provider_foundation_privacy-path_provider_foundation-Info.plist"; sourceTree = "<group>"; };
+		60308FE7EF854C6D9E3A9DE66A435EDE /* package_info_plus.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = package_info_plus.podspec; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/macos/package_info_plus.podspec"; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		6123992895D4C726D6890A84487001C8 /* webview_flutter_wkwebview.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = webview_flutter_wkwebview.modulemap; sourceTree = "<group>"; };
 		613DFD448A08DAECE7839134EA545F2E /* WebsiteDataStoreProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WebsiteDataStoreProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/WebsiteDataStoreProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		61DB67402F116B123B0FF1925BC543CE /* url_launcher_macos.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = url_launcher_macos.debug.xcconfig; sourceTree = "<group>"; };
 		63009C26C87484D4E850717633D0D7BD /* FVPAssetProvider.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FVPAssetProvider.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/FVPAssetProvider.h"; sourceTree = "<group>"; };
-		631A72AC16F9EDF622D44B8D27E3005B /* FPPPackageInfoPlusPlugin.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FPPPackageInfoPlusPlugin.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/macos/package_info_plus/Sources/package_info_plus/FPPPackageInfoPlusPlugin.m"; sourceTree = "<group>"; };
 		64FB8D36F3D5FD1F4E08A8CB92BCD154 /* package_info_plus-package_info_plus_privacy */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "package_info_plus-package_info_plus_privacy"; path = package_info_plus_privacy.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		65BF1E62409A8FB4AD8291729ABB646B /* wakelock_plus-wakelock_plus */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "wakelock_plus-wakelock_plus"; path = wakelock_plus.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		669E8F25E1897672BDB80B7EB784DA24 /* Pods-Runner */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-Runner"; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -476,14 +476,13 @@
 		6B607B985740D9EC8BAF5CA22EC5517A /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/LICENSE"; sourceTree = "<group>"; };
 		6C3345B1B3CAEDF5B03B1F731FDC492E /* Pods-RunnerTests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-RunnerTests"; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EBDB9F6C6979FBABCE9C805255E739F /* VideoPlayerInstanceMessages.g.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = VideoPlayerInstanceMessages.g.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/VideoPlayerInstanceMessages.g.h"; sourceTree = "<group>"; };
-		7073D5D532F25BAA1B04374AA4C9D2F2 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/LICENSE"; sourceTree = "<group>"; };
 		71AD1F4F069718FC78E0225E8115395F /* URLCredentialProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = URLCredentialProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/URLCredentialProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		71B43ED511CAB61785B1D2A590195EEC /* FlutterMacOS.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; path = FlutterMacOS.podspec; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		72194EFB6C2DEBC7B669219A02968B02 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/LICENSE"; sourceTree = "<group>"; };
+		724C061CE04D73A27C28B6C16F2929B0 /* ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist"; sourceTree = "<group>"; };
 		728A5ED1DD60BAC8C8F382A87B976F84 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		7293F1F4F22D2FFCE343327FA5A8D3D4 /* WebpagePreferencesProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WebpagePreferencesProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/WebpagePreferencesProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		735540B94241A45CF7B26312F4FCE2FF /* ScrollViewProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScrollViewProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/ScrollViewProxyAPIDelegate.swift"; sourceTree = "<group>"; };
-		7365F2C6FE6E0B9B9D2074CB4AFC3E3A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/macos/package_info_plus/Sources/package_info_plus/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		7409A9316D1EEFAC7B383BE8CEC1BE03 /* webview_flutter_wkwebview */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = webview_flutter_wkwebview; path = webview_flutter_wkwebview.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7484F6AE0A9134022A80C0538749598F /* FVPCoreVideoDisplayLink.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FVPCoreVideoDisplayLink.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_macos/FVPCoreVideoDisplayLink.m"; sourceTree = "<group>"; };
 		749D6B2122161F02A27A975D9CD62CA3 /* shared_preferences_foundation.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = shared_preferences_foundation.podspec; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/darwin/shared_preferences_foundation.podspec"; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
@@ -499,13 +498,15 @@
 		7F6D66579164985224997C3AFDC9BFBB /* url_launcher_macos-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "url_launcher_macos-umbrella.h"; sourceTree = "<group>"; };
 		803530A6AE4AEBAEA8DA79C9EB90689B /* webview_flutter_wkwebview.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = webview_flutter_wkwebview.podspec; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview.podspec"; sourceTree = "<group>"; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		80584C1A3E4110A888352FA530D629E1 /* webview_flutter_wkwebview.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = webview_flutter_wkwebview.debug.xcconfig; sourceTree = "<group>"; };
+		81524787D1EE30CD2C8CA0C575B630D3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/macos/package_info_plus/Sources/package_info_plus/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = package_info_plus.release.xcconfig; sourceTree = "<group>"; };
 		84622758C90B9D9379199F56DC1B2E39 /* ScrollViewDelegateProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScrollViewDelegateProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/ScrollViewDelegateProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		847A20953FA96414683C7A41AB649281 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/LICENSE"; sourceTree = "<group>"; };
-		84B1F86815B5C4FFEC8EFB692972D0D3 /* package_info_plus.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = package_info_plus.modulemap; sourceTree = "<group>"; };
 		863E3FD07CA67DC38C91E830A41CCD40 /* HTTPCookieProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HTTPCookieProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/HTTPCookieProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		866F49532FFF349889BAD0BAEBCC20A0 /* NavigationResponseProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationResponseProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/NavigationResponseProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		868576B58391C83D9DDB8E728EA9A413 /* FVPCADisplayLink.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FVPCADisplayLink.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/FVPCADisplayLink.m"; sourceTree = "<group>"; };
 		8D0B1009C159386927860B32E188E961 /* FVPVideoEventListener.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FVPVideoEventListener.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/FVPVideoEventListener.h"; sourceTree = "<group>"; };
+		8D7361B346692B54E5605883B1367D47 /* package_info_plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = package_info_plus.debug.xcconfig; sourceTree = "<group>"; };
 		8E4AC447F725BE3BECB8C88528435724 /* AuthenticationChallengeResponse.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AuthenticationChallengeResponse.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/AuthenticationChallengeResponse.swift"; sourceTree = "<group>"; };
 		8E56EB7F14F207488EFDCCC6054C4113 /* webview_flutter_wkwebview-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "webview_flutter_wkwebview-umbrella.h"; sourceTree = "<group>"; };
 		8F9FB1CBEDBC090811CCBFAB745CFEAC /* RecorderStreamDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecorderStreamDelegate.swift; path = "../../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/delegate/RecorderStreamDelegate.swift"; sourceTree = "<group>"; };
@@ -531,7 +532,6 @@
 		A6FA6CC2CA5DD2F858098473109A0A72 /* ResourceBundle-wakelock_plus-wakelock_plus-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "ResourceBundle-wakelock_plus-wakelock_plus-Info.plist"; sourceTree = "<group>"; };
 		AA18AAED8B03CAA172CD101071800FCE /* RecordPlugin.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = RecordPlugin.h; path = "../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/RecordPlugin.h"; sourceTree = "<group>"; };
 		AC0A1FB7AE849DBE2D441D4DC87563F7 /* SwiftRecordPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SwiftRecordPlugin.swift; path = "../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/SwiftRecordPlugin.swift"; sourceTree = "<group>"; };
-		AC10DAEFDA1095ED4C50EC017DD61334 /* FPPPackageInfoPlusPlugin.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FPPPackageInfoPlusPlugin.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/macos/package_info_plus/Sources/package_info_plus/include/package_info_plus/FPPPackageInfoPlusPlugin.h"; sourceTree = "<group>"; };
 		AC8FE152530FBDCE460186B326C1A8FB /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		ACE73943F777984E7D66AF46E55A3095 /* AuthenticationChallengeResponseProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AuthenticationChallengeResponseProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/AuthenticationChallengeResponseProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		AD383D9CFC1B355F52B1DDA0045F0A2A /* record_darwin */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = record_darwin; path = record_darwin.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -541,16 +541,17 @@
 		B00A5ECAED4CA0C16FF7C65365BC0334 /* Pods-RunnerTests-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-RunnerTests-Info.plist"; sourceTree = "<group>"; };
 		B0BD57AB3672E53828D11C2A3368023A /* Pods-RunnerTests.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-RunnerTests.modulemap"; sourceTree = "<group>"; };
 		B0C813F84305F310A53A7F2E2F0AE6E7 /* audioplayers_darwin.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = audioplayers_darwin.modulemap; sourceTree = "<group>"; };
+		B2F9A2852B941D5CDD2BA278152952A4 /* FPPPackageInfoPlusPlugin.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FPPPackageInfoPlusPlugin.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/macos/package_info_plus/Sources/package_info_plus/FPPPackageInfoPlusPlugin.m"; sourceTree = "<group>"; };
 		B34C420AA8D5C5A35FE7C3944CBBEC4E /* path_provider_foundation.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = path_provider_foundation.debug.xcconfig; sourceTree = "<group>"; };
 		B3D6601666BE7690510297F22E7CD489 /* FVPFrameUpdater.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FVPFrameUpdater.m; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/FVPFrameUpdater.m"; sourceTree = "<group>"; };
 		B3EAA18BE79B651C15B4BC751C6EAD71 /* NavigationDelegateProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationDelegateProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/NavigationDelegateProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		B45490D79A46311FD2E9DA166C0149FF /* FVPEventBridge.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FVPEventBridge.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/FVPEventBridge.h"; sourceTree = "<group>"; };
+		B48600C7E667153A92682F0B9DC76648 /* package_info_plus-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "package_info_plus-umbrella.h"; sourceTree = "<group>"; };
 		B703785507B22BAF0B800737429577EC /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		B781ABF6A79E6D8FCF146A0034363C30 /* RecorderFormat.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecorderFormat.swift; path = "../../../../../../../../../../../.pub-cache/hosted/pub.dev/record_darwin-1.2.2/macos/Classes/RecorderFormat.swift"; sourceTree = "<group>"; };
 		B8EC84C4FBA0D67CC8772BF3D360DB16 /* audioplayers_darwin-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "audioplayers_darwin-umbrella.h"; sourceTree = "<group>"; };
-		BA37C9A76879ED621A6DE2F710F98DC4 /* package_info_plus-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "package_info_plus-dummy.m"; sourceTree = "<group>"; };
-		BBC034F97724A80B299B6BEF2B2F67AD /* ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist"; sourceTree = "<group>"; };
 		BBE5D44B4CE13DC50C80BB42FCEF6622 /* HTTPCookieStoreProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HTTPCookieStoreProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/HTTPCookieStoreProxyAPIDelegate.swift"; sourceTree = "<group>"; };
+		BD3561305072EAB67E190DDC81C24C4A /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/LICENSE"; sourceTree = "<group>"; };
 		BF4C4F3EEFC219FD4D1A452D23642571 /* record_darwin.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = record_darwin.modulemap; sourceTree = "<group>"; };
 		BF77186730ED4C0ED85C301AF00E7FAE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = "../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/darwin/shared_preferences_foundation/Sources/shared_preferences_foundation/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		C087002862162CC290520CE6FAA58603 /* SecCertificateProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecCertificateProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/SecCertificateProxyAPIDelegate.swift"; sourceTree = "<group>"; };
@@ -563,7 +564,6 @@
 		C50FD10CD19FF6999637BA5ECAF1681B /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		C56B7EE87F054E1AC0B42F4E8C74427E /* ResourceBundle-shared_preferences_foundation_privacy-shared_preferences_foundation-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "ResourceBundle-shared_preferences_foundation_privacy-shared_preferences_foundation-Info.plist"; sourceTree = "<group>"; };
 		C93AF6EA084C05E3463FA213E4D54A23 /* url_launcher_macos-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "url_launcher_macos-dummy.m"; sourceTree = "<group>"; };
-		C9FD8C3A48CB31C325C299BBFF09A968 /* package_info_plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = package_info_plus.debug.xcconfig; sourceTree = "<group>"; };
 		CAB97FD214601F834E027EB3A2E3722A /* webview_flutter_wkwebview-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "webview_flutter_wkwebview-Info.plist"; sourceTree = "<group>"; };
 		CAF2703D65006977AD45B72473E2E872 /* url_launcher_macos.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = url_launcher_macos.release.xcconfig; sourceTree = "<group>"; };
 		CBAFCA0F827A2C6DA3BCA879F81310DB /* video_player_avfoundation-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "video_player_avfoundation-umbrella.h"; sourceTree = "<group>"; };
@@ -592,9 +592,9 @@
 		EC4EC6D052A1E5010A8D24D38A20AB80 /* FVPVideoPlayer.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FVPVideoPlayer.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/FVPVideoPlayer.h"; sourceTree = "<group>"; };
 		EC89A73FBF1A55933488D85BADB30BDC /* ScriptMessageProxyAPIDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScriptMessageProxyAPIDelegate.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.25.1/darwin/webview_flutter_wkwebview/Sources/webview_flutter_wkwebview/ScriptMessageProxyAPIDelegate.swift"; sourceTree = "<group>"; };
 		ECDF6AA713870989438BA93B395DC557 /* Pods-Runner-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-Runner-acknowledgements.markdown"; sourceTree = "<group>"; };
+		F01248B77AF5EC6239B83654ED9F31FD /* FPPPackageInfoPlusPlugin.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FPPPackageInfoPlusPlugin.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/macos/package_info_plus/Sources/package_info_plus/include/package_info_plus/FPPPackageInfoPlusPlugin.h"; sourceTree = "<group>"; };
 		F0F48E0AEE76E042AC6C3CB1C4BFC55B /* SharedPreferencesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedPreferencesPlugin.swift; path = "../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/darwin/shared_preferences_foundation/Sources/shared_preferences_foundation/SharedPreferencesPlugin.swift"; sourceTree = "<group>"; };
 		F30519B33821643382CCBFBCFA6B7525 /* video_player_avfoundation */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = video_player_avfoundation; path = video_player_avfoundation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = package_info_plus.release.xcconfig; sourceTree = "<group>"; };
 		F658FE60C20D06CE363090C94850889D /* record_darwin.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = record_darwin.release.xcconfig; sourceTree = "<group>"; };
 		F98C477355259F5F772A8026F6B78938 /* url_launcher_macos-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "url_launcher_macos-Info.plist"; sourceTree = "<group>"; };
 		FA9072BC96D054B2DBD7D714AB4A176F /* AVAssetTrackUtils.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = AVAssetTrackUtils.h; path = "../../../../../../../../../../../../../../../.pub-cache/hosted/pub.dev/video_player_avfoundation-2.9.7/darwin/video_player_avfoundation/Sources/video_player_avfoundation_objc/include/video_player_avfoundation_objc/AVAssetTrackUtils.h"; sourceTree = "<group>"; };
@@ -841,17 +841,6 @@
 			path = path_provider_foundation;
 			sourceTree = "<group>";
 		};
-		0C68BBDEE7903F68E0D6412F998147A7 /* package_info_plus */ = {
-			isa = PBXGroup;
-			children = (
-				CCED3925C4C3CE4E95B8B435D3688058 /* .. */,
-				52CBB088497DB5E825A272A758CCB592 /* Pod */,
-				E855F8C3C44B578FDE5D1DAD5469ED7D /* Support Files */,
-			);
-			name = package_info_plus;
-			path = ../Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos;
-			sourceTree = "<group>";
-		};
 		0CD1B9DD238EE38932FCABECE3C65AB8 /* macos */ = {
 			isa = PBXGroup;
 			children = (
@@ -868,15 +857,6 @@
 			);
 			name = "avto-test-mobil";
 			path = "avto-test-mobil";
-			sourceTree = "<group>";
-		};
-		0D612206025AFB2D003FEA8A413001C9 /* macos */ = {
-			isa = PBXGroup;
-			children = (
-				5310404B9F80D9C8CC5603E3E36AB7F8 /* package_info_plus */,
-			);
-			name = macos;
-			path = macos;
 			sourceTree = "<group>";
 		};
 		0D7BF6E19116037195191B18049AD3EE /* Resources */ = {
@@ -958,6 +938,15 @@
 			);
 			name = Flutter;
 			path = Flutter;
+			sourceTree = "<group>";
+		};
+		16011D139F4D6A777D5158A0243462BA /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				4EA983AEDF933B02BCB7414CEA21C858 /* .. */,
+			);
+			name = ..;
+			path = ..;
 			sourceTree = "<group>";
 		};
 		16377DCD47652FCF7918484E5A6AAC17 /* plugins */ = {
@@ -1086,6 +1075,17 @@
 			path = Desktop;
 			sourceTree = "<group>";
 		};
+		227C445A05BDE70879DD254437288EA2 /* package_info_plus */ = {
+			isa = PBXGroup;
+			children = (
+				3F40925454B627BE7BFD59947C285648 /* .. */,
+				C4A2A91E8474477C98B513FEAA2A847F /* Pod */,
+				C003A783D35D6AE721C03693E3F2F2B6 /* Support Files */,
+			);
+			name = package_info_plus;
+			path = ../Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos;
+			sourceTree = "<group>";
+		};
 		2322EE4F13F00089A7190E75FE95E415 /* darwin */ = {
 			isa = PBXGroup;
 			children = (
@@ -1192,6 +1192,15 @@
 			);
 			name = Desktop;
 			path = Desktop;
+			sourceTree = "<group>";
+		};
+		2F3B31BED1CB41BE3E620ACB0AE2CDCA /* ephemeral */ = {
+			isa = PBXGroup;
+			children = (
+				C72115E37394BB2C2B9A571B21280C46 /* .symlinks */,
+			);
+			name = ephemeral;
+			path = ephemeral;
 			sourceTree = "<group>";
 		};
 		2F5A211002AA2798B735284BBB4E6D79 /* .. */ = {
@@ -1334,6 +1343,17 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		37A2916B6AC485837AB32B3E3C022066 /* package_info_plus */ = {
+			isa = PBXGroup;
+			children = (
+				B2F9A2852B941D5CDD2BA278152952A4 /* FPPPackageInfoPlusPlugin.m */,
+				81524787D1EE30CD2C8CA0C575B630D3 /* PrivacyInfo.xcprivacy */,
+				634DE6FFFC7F7EDEC3D48FDBBF2AB7B1 /* include */,
+			);
+			name = package_info_plus;
+			path = package_info_plus;
+			sourceTree = "<group>";
+		};
 		3819B43FA9C7987CF7B7847B1022AC2D /* Desktop */ = {
 			isa = PBXGroup;
 			children = (
@@ -1352,13 +1372,22 @@
 			path = ..;
 			sourceTree = "<group>";
 		};
-		3E2D994B3054DDDD04CCE41E9F9D8E83 /* .. */ = {
+		3BB75F34AE98F77B02074F05241E92DA /* macos */ = {
 			isa = PBXGroup;
 			children = (
-				641477F36E8C8789B1E8BB66AC1EA839 /* .. */,
+				3D5D45A59D1C71FF47D5AE2EBFB17E30 /* package_info_plus */,
 			);
-			name = ..;
-			path = ..;
+			name = macos;
+			path = macos;
+			sourceTree = "<group>";
+		};
+		3D5D45A59D1C71FF47D5AE2EBFB17E30 /* package_info_plus */ = {
+			isa = PBXGroup;
+			children = (
+				90A4FEE901BFDD2B753CF7A5DCEBE5B1 /* Sources */,
+			);
+			name = package_info_plus;
+			path = package_info_plus;
 			sourceTree = "<group>";
 		};
 		3E4DF9BC4721EB4DB0D27A65F85BBE12 /* Desktop */ = {
@@ -1388,13 +1417,13 @@
 			path = .;
 			sourceTree = "<group>";
 		};
-		40517677A737AE78D303465D99D91F57 /* Desktop */ = {
+		3F40925454B627BE7BFD59947C285648 /* .. */ = {
 			isa = PBXGroup;
 			children = (
-				A4F5A15518A866AEB95671FA2797C814 /* Topshirdi */,
+				D0C7E8B38A04329B3C1CDA14B54339E4 /* .. */,
 			);
-			name = Desktop;
-			path = Desktop;
+			name = ..;
+			path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.2.1/macos/package_info_plus/Sources";
 			sourceTree = "<group>";
 		};
 		40C4E58C0E3F66C3BF7C25F6F566EA34 /* .. */ = {
@@ -1419,15 +1448,6 @@
 			isa = PBXGroup;
 			children = (
 				44BB56CEDFC021D62530576E6AB0B261 /* .. */,
-			);
-			name = ..;
-			path = ..;
-			sourceTree = "<group>";
-		};
-		419FD5E55C4F5EA1FE27B1F12B395BFB /* .. */ = {
-			isa = PBXGroup;
-			children = (
-				9CC40018DE2F439E05653E61ADC01A47 /* .. */,
 			);
 			name = ..;
 			path = ..;
@@ -1646,6 +1666,15 @@
 			path = Desktop;
 			sourceTree = "<group>";
 		};
+		4EA983AEDF933B02BCB7414CEA21C858 /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				6B0E9271687D906488D58F18521C4F50 /* .. */,
+			);
+			name = ..;
+			path = ..;
+			sourceTree = "<group>";
+		};
 		4EBBEE09280D24C6C29CA95A755D03C7 /* url_launcher_macos */ = {
 			isa = PBXGroup;
 			children = (
@@ -1698,24 +1727,6 @@
 			);
 			name = Resources;
 			path = Resources;
-			sourceTree = "<group>";
-		};
-		52CBB088497DB5E825A272A758CCB592 /* Pod */ = {
-			isa = PBXGroup;
-			children = (
-				7073D5D532F25BAA1B04374AA4C9D2F2 /* LICENSE */,
-				553BB41A0564F23CB6CDB181E40A2FE7 /* package_info_plus.podspec */,
-			);
-			name = Pod;
-			sourceTree = "<group>";
-		};
-		5310404B9F80D9C8CC5603E3E36AB7F8 /* package_info_plus */ = {
-			isa = PBXGroup;
-			children = (
-				FFA778BDBB78DF4BC9B08F4A36197102 /* Sources */,
-			);
-			name = package_info_plus;
-			path = package_info_plus;
 			sourceTree = "<group>";
 		};
 		537E840C4F4E30B706FD9D64B15C53A7 /* Pods-RunnerTests */ = {
@@ -1798,15 +1809,6 @@
 			path = darwin;
 			sourceTree = "<group>";
 		};
-		588CE90BD066013256FAE344A75E988A /* Flutter */ = {
-			isa = PBXGroup;
-			children = (
-				6DDBBCABAA0A6A59A11D955B9166C00A /* ephemeral */,
-			);
-			name = Flutter;
-			path = Flutter;
-			sourceTree = "<group>";
-		};
 		592697EF686094CBF3DB5813D074DF9B /* Support Files */ = {
 			isa = PBXGroup;
 			children = (
@@ -1821,6 +1823,15 @@
 			);
 			name = "Support Files";
 			path = "../../../../../../Pods/Target Support Files/shared_preferences_foundation";
+			sourceTree = "<group>";
+		};
+		5990E2FBCD879F328288FBBF946646FD /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				C8E233400CBD62CCCA4DBFDA419AFE0E /* .. */,
+			);
+			name = ..;
+			path = ..;
 			sourceTree = "<group>";
 		};
 		5A1C334F30C4CDA0A02BB76C4E9DD311 /* Sources */ = {
@@ -1906,13 +1917,13 @@
 			path = shared_preferences_foundation;
 			sourceTree = "<group>";
 		};
-		641477F36E8C8789B1E8BB66AC1EA839 /* .. */ = {
+		634DE6FFFC7F7EDEC3D48FDBBF2AB7B1 /* include */ = {
 			isa = PBXGroup;
 			children = (
-				40517677A737AE78D303465D99D91F57 /* Desktop */,
+				6FB2799EB0430C4291ABFC3F9BC0D0CD /* package_info_plus */,
 			);
-			name = ..;
-			path = ..;
+			name = include;
+			path = include;
 			sourceTree = "<group>";
 		};
 		641E0D040E9E3865C763743DD63898C3 /* plugins */ = {
@@ -1933,6 +1944,15 @@
 			path = url_launcher_macos;
 			sourceTree = "<group>";
 		};
+		65A83379C460F381A66D54709D0135FA /* Desktop */ = {
+			isa = PBXGroup;
+			children = (
+				D659B328597AA69BDA426FE112E19552 /* Topshirdi */,
+			);
+			name = Desktop;
+			path = Desktop;
+			sourceTree = "<group>";
+		};
 		6760D2CCC5994666ECAD386860731F84 /* ephemeral */ = {
 			isa = PBXGroup;
 			children = (
@@ -1951,6 +1971,24 @@
 			);
 			name = Sources;
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		68100F88E45C32FA9980B436CD58D54A /* package_info_plus */ = {
+			isa = PBXGroup;
+			children = (
+				3BB75F34AE98F77B02074F05241E92DA /* macos */,
+			);
+			name = package_info_plus;
+			path = package_info_plus;
+			sourceTree = "<group>";
+		};
+		6B0E9271687D906488D58F18521C4F50 /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				B61F445C59693FFE5B2B9449A263D9D0 /* .. */,
+			);
+			name = ..;
+			path = ..;
 			sourceTree = "<group>";
 		};
 		6B1F3A762E2D7E9D072C38F8D4E4A25D /* url_launcher_macos */ = {
@@ -1988,33 +2026,6 @@
 			path = ..;
 			sourceTree = "<group>";
 		};
-		6DA00AD6C0423EDB0EDEC22BA0A4FB52 /* .symlinks */ = {
-			isa = PBXGroup;
-			children = (
-				6EC949E8C9AA9A6C4278EB0B135A0B53 /* plugins */,
-			);
-			name = .symlinks;
-			path = .symlinks;
-			sourceTree = "<group>";
-		};
-		6DDBBCABAA0A6A59A11D955B9166C00A /* ephemeral */ = {
-			isa = PBXGroup;
-			children = (
-				6DA00AD6C0423EDB0EDEC22BA0A4FB52 /* .symlinks */,
-			);
-			name = ephemeral;
-			path = ephemeral;
-			sourceTree = "<group>";
-		};
-		6EC949E8C9AA9A6C4278EB0B135A0B53 /* plugins */ = {
-			isa = PBXGroup;
-			children = (
-				CE3DF11DAFD94CD85D4EBD42ECC7C4F2 /* package_info_plus */,
-			);
-			name = plugins;
-			path = plugins;
-			sourceTree = "<group>";
-		};
 		6F006FD9DBE418015F6A3993880C4B22 /* webview_flutter_wkwebview */ = {
 			isa = PBXGroup;
 			children = (
@@ -2024,6 +2035,15 @@
 			);
 			name = webview_flutter_wkwebview;
 			path = ../Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin;
+			sourceTree = "<group>";
+		};
+		6FB2799EB0430C4291ABFC3F9BC0D0CD /* package_info_plus */ = {
+			isa = PBXGroup;
+			children = (
+				F01248B77AF5EC6239B83654ED9F31FD /* FPPPackageInfoPlusPlugin.h */,
+			);
+			name = package_info_plus;
+			path = package_info_plus;
 			sourceTree = "<group>";
 		};
 		70F839B4C93D2DFC95F69F9CF96FD90D /* .. */ = {
@@ -2246,15 +2266,6 @@
 			name = Pod;
 			sourceTree = "<group>";
 		};
-		7EC3F96FD77FECCBCD240544E9665C00 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				FFFA8E4E92CFE734514967A1129DF372 /* package_info_plus */,
-			);
-			name = include;
-			path = include;
-			sourceTree = "<group>";
-		};
 		7F6C4C76932C4C4A2AE9C559C05C045D /* path_provider_foundation */ = {
 			isa = PBXGroup;
 			children = (
@@ -2288,15 +2299,6 @@
 			);
 			name = "Support Files";
 			path = "../../../../../../Pods/Target Support Files/record_darwin";
-			sourceTree = "<group>";
-		};
-		802FA09BE18266E77EB0FEEAC4B02170 /* .. */ = {
-			isa = PBXGroup;
-			children = (
-				419FD5E55C4F5EA1FE27B1F12B395BFB /* .. */,
-			);
-			name = ..;
-			path = ..;
 			sourceTree = "<group>";
 		};
 		81BDD665197B44C29E2185D1A0C84BF5 /* wakelock_plus */ = {
@@ -2427,6 +2429,15 @@
 			path = shared_preferences_foundation;
 			sourceTree = "<group>";
 		};
+		89BC1F68C4FE6497349820D5143B8311 /* avto-test-mobil */ = {
+			isa = PBXGroup;
+			children = (
+				B8311E7B8A8FA22DFFA7583F62C9F3A1 /* macos */,
+			);
+			name = "avto-test-mobil";
+			path = "avto-test-mobil";
+			sourceTree = "<group>";
+		};
 		8A04D6BF86A0BE67A7F7E8965AA6C88F /* shared_preferences_foundation */ = {
 			isa = PBXGroup;
 			children = (
@@ -2504,6 +2515,15 @@
 				803530A6AE4AEBAEA8DA79C9EB90689B /* webview_flutter_wkwebview.podspec */,
 			);
 			name = Pod;
+			sourceTree = "<group>";
+		};
+		90A4FEE901BFDD2B753CF7A5DCEBE5B1 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				37A2916B6AC485837AB32B3E3C022066 /* package_info_plus */,
+			);
+			name = Sources;
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		90BA33DD385B0126A3AB2D1EE7168564 /* .. */ = {
@@ -2592,7 +2612,7 @@
 			children = (
 				994254582BC8190577C0FBC5EA1AE940 /* audioplayers_darwin */,
 				09422DBEC31FB6F84EFD7DD740D18409 /* FlutterMacOS */,
-				0C68BBDEE7903F68E0D6412F998147A7 /* package_info_plus */,
+				227C445A05BDE70879DD254437288EA2 /* package_info_plus */,
 				81F16124DD51DA4BC475002825DD9171 /* path_provider_foundation */,
 				46C39A6DAEE74678E2F133428302C159 /* record_darwin */,
 				BA103DADE82C06807A24771A6DB4FF9D /* shared_preferences_foundation */,
@@ -2671,15 +2691,6 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
-		9CC40018DE2F439E05653E61ADC01A47 /* .. */ = {
-			isa = PBXGroup;
-			children = (
-				C608A076EFC3325C192F68B46748B626 /* .. */,
-			);
-			name = ..;
-			path = ..;
-			sourceTree = "<group>";
-		};
 		9D98DD203690BDB88850B2728FE552BA /* Desktop */ = {
 			isa = PBXGroup;
 			children = (
@@ -2733,15 +2744,6 @@
 			);
 			name = ..;
 			path = ..;
-			sourceTree = "<group>";
-		};
-		A4F5A15518A866AEB95671FA2797C814 /* Topshirdi */ = {
-			isa = PBXGroup;
-			children = (
-				D7C00182403F6209E98F90F018C0341C /* avto-test-mobil */,
-			);
-			name = Topshirdi;
-			path = Topshirdi;
 			sourceTree = "<group>";
 		};
 		A734F06D8B6EFC64C663E1B2347A1E18 /* .. */ = {
@@ -2969,10 +2971,28 @@
 			path = darwin;
 			sourceTree = "<group>";
 		};
+		B61F445C59693FFE5B2B9449A263D9D0 /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				5990E2FBCD879F328288FBBF946646FD /* .. */,
+			);
+			name = ..;
+			path = ..;
+			sourceTree = "<group>";
+		};
 		B7B8D48CC124E902BD4364226AA50988 /* macos */ = {
 			isa = PBXGroup;
 			children = (
 				2FBEA796EFFC8AFE74553D4A62009BF1 /* Flutter */,
+			);
+			name = macos;
+			path = macos;
+			sourceTree = "<group>";
+		};
+		B8311E7B8A8FA22DFFA7583F62C9F3A1 /* macos */ = {
+			isa = PBXGroup;
+			children = (
+				BBF9131D72CA19802B02599868BAFF77 /* Flutter */,
 			);
 			name = macos;
 			path = macos;
@@ -3021,6 +3041,15 @@
 			);
 			name = ..;
 			path = ..;
+			sourceTree = "<group>";
+		};
+		BBF9131D72CA19802B02599868BAFF77 /* Flutter */ = {
+			isa = PBXGroup;
+			children = (
+				2F3B31BED1CB41BE3E620ACB0AE2CDCA /* ephemeral */,
+			);
+			name = Flutter;
+			path = Flutter;
 			sourceTree = "<group>";
 		};
 		BC843EBF5AD4A965EB61F58E87D04F64 /* .symlinks */ = {
@@ -3075,6 +3104,22 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		C003A783D35D6AE721C03693E3F2F2B6 /* Support Files */ = {
+			isa = PBXGroup;
+			children = (
+				2E3B2D6FFED7ACB8B2B6E9B80962F4C4 /* package_info_plus.modulemap */,
+				5E242BFBC6E6A8624246342F58B3DEFB /* package_info_plus-dummy.m */,
+				176A9DE8BDC2D238226ED56DCD1044B9 /* package_info_plus-Info.plist */,
+				1A3BAD4CF660D21AF838CED410586A5C /* package_info_plus-prefix.pch */,
+				B48600C7E667153A92682F0B9DC76648 /* package_info_plus-umbrella.h */,
+				8D7361B346692B54E5605883B1367D47 /* package_info_plus.debug.xcconfig */,
+				84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */,
+				724C061CE04D73A27C28B6C16F2929B0 /* ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist */,
+			);
+			name = "Support Files";
+			path = "../../../../../../Pods/Target Support Files/package_info_plus";
+			sourceTree = "<group>";
+		};
 		C0B7E0EBB00A9E9937263BA91671ECD7 /* Topshirdi */ = {
 			isa = PBXGroup;
 			children = (
@@ -3120,13 +3165,22 @@
 			path = macos;
 			sourceTree = "<group>";
 		};
-		C608A076EFC3325C192F68B46748B626 /* .. */ = {
+		C4A2A91E8474477C98B513FEAA2A847F /* Pod */ = {
 			isa = PBXGroup;
 			children = (
-				D64690978DDD8D3988CAB4F93FE72DB0 /* .. */,
+				BD3561305072EAB67E190DDC81C24C4A /* LICENSE */,
+				60308FE7EF854C6D9E3A9DE66A435EDE /* package_info_plus.podspec */,
 			);
-			name = ..;
-			path = ..;
+			name = Pod;
+			sourceTree = "<group>";
+		};
+		C72115E37394BB2C2B9A571B21280C46 /* .symlinks */ = {
+			isa = PBXGroup;
+			children = (
+				D681A70BF6881CD2602A39FE1200FD44 /* plugins */,
+			);
+			name = .symlinks;
+			path = .symlinks;
 			sourceTree = "<group>";
 		};
 		C798AD2C78D80662E2DB3659FE98F0D3 /* avto-test-mobil */ = {
@@ -3145,6 +3199,15 @@
 			);
 			name = Flutter;
 			path = Flutter;
+			sourceTree = "<group>";
+		};
+		C8E233400CBD62CCCA4DBFDA419AFE0E /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				65A83379C460F381A66D54709D0135FA /* Desktop */,
+			);
+			name = ..;
+			path = ..;
 			sourceTree = "<group>";
 		};
 		C945F8153BE7A6EDCB3DD775E60B4F23 /* .. */ = {
@@ -3210,15 +3273,6 @@
 			path = Flutter;
 			sourceTree = "<group>";
 		};
-		CCED3925C4C3CE4E95B8B435D3688058 /* .. */ = {
-			isa = PBXGroup;
-			children = (
-				802FA09BE18266E77EB0FEEAC4B02170 /* .. */,
-			);
-			name = ..;
-			path = "../../../../../../../../../../.pub-cache/hosted/pub.dev/package_info_plus-10.1.0/macos/package_info_plus/Sources";
-			sourceTree = "<group>";
-		};
 		CDE380FEFFD5A0F091A41024FA806162 /* Topshirdi */ = {
 			isa = PBXGroup;
 			children = (
@@ -3226,15 +3280,6 @@
 			);
 			name = Topshirdi;
 			path = Topshirdi;
-			sourceTree = "<group>";
-		};
-		CE3DF11DAFD94CD85D4EBD42ECC7C4F2 /* package_info_plus */ = {
-			isa = PBXGroup;
-			children = (
-				0D612206025AFB2D003FEA8A413001C9 /* macos */,
-			);
-			name = package_info_plus;
-			path = package_info_plus;
 			sourceTree = "<group>";
 		};
 		CF1408CF629C7361332E53B88F7BD30C = {
@@ -3279,6 +3324,15 @@
 			isa = PBXGroup;
 			children = (
 				D1899BD3B1BDAB60C53A228E6A69F769 /* .. */,
+			);
+			name = ..;
+			path = ..;
+			sourceTree = "<group>";
+		};
+		D0C7E8B38A04329B3C1CDA14B54339E4 /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				16011D139F4D6A777D5158A0243462BA /* .. */,
 			);
 			name = ..;
 			path = ..;
@@ -3329,22 +3383,22 @@
 			path = ..;
 			sourceTree = "<group>";
 		};
-		D64690978DDD8D3988CAB4F93FE72DB0 /* .. */ = {
+		D659B328597AA69BDA426FE112E19552 /* Topshirdi */ = {
 			isa = PBXGroup;
 			children = (
-				3E2D994B3054DDDD04CCE41E9F9D8E83 /* .. */,
+				89BC1F68C4FE6497349820D5143B8311 /* avto-test-mobil */,
 			);
-			name = ..;
-			path = ..;
+			name = Topshirdi;
+			path = Topshirdi;
 			sourceTree = "<group>";
 		};
-		D7C00182403F6209E98F90F018C0341C /* avto-test-mobil */ = {
+		D681A70BF6881CD2602A39FE1200FD44 /* plugins */ = {
 			isa = PBXGroup;
 			children = (
-				F58D7A866F59EEE67A91D5FC73241166 /* macos */,
+				68100F88E45C32FA9980B436CD58D54A /* package_info_plus */,
 			);
-			name = "avto-test-mobil";
-			path = "avto-test-mobil";
+			name = plugins;
+			path = plugins;
 			sourceTree = "<group>";
 		};
 		D8895942F3C63724F9568DA248FFF031 /* Desktop */ = {
@@ -3551,22 +3605,6 @@
 			path = "Target Support Files/Pods-Runner";
 			sourceTree = "<group>";
 		};
-		E855F8C3C44B578FDE5D1DAD5469ED7D /* Support Files */ = {
-			isa = PBXGroup;
-			children = (
-				84B1F86815B5C4FFEC8EFB692972D0D3 /* package_info_plus.modulemap */,
-				BA37C9A76879ED621A6DE2F710F98DC4 /* package_info_plus-dummy.m */,
-				34E49392D9AF64E84E5ABC96C19552FC /* package_info_plus-Info.plist */,
-				198A9E0FCD7F56DF126BC67E41055189 /* package_info_plus-prefix.pch */,
-				2AECDD04C8C986120A2EE9CAD25AD356 /* package_info_plus-umbrella.h */,
-				C9FD8C3A48CB31C325C299BBFF09A968 /* package_info_plus.debug.xcconfig */,
-				F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */,
-				BBC034F97724A80B299B6BEF2B2F67AD /* ResourceBundle-package_info_plus_privacy-package_info_plus-Info.plist */,
-			);
-			name = "Support Files";
-			path = "../../../../../../Pods/Target Support Files/package_info_plus";
-			sourceTree = "<group>";
-		};
 		EA46B0005C059D75335F39C8E4F67849 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -3657,17 +3695,6 @@
 			path = "../../../../../../Pods/Target Support Files/path_provider_foundation";
 			sourceTree = "<group>";
 		};
-		F1A2D58A3B855A8882052557D2983665 /* package_info_plus */ = {
-			isa = PBXGroup;
-			children = (
-				631A72AC16F9EDF622D44B8D27E3005B /* FPPPackageInfoPlusPlugin.m */,
-				7365F2C6FE6E0B9B9D2074CB4AFC3E3A /* PrivacyInfo.xcprivacy */,
-				7EC3F96FD77FECCBCD240544E9665C00 /* include */,
-			);
-			name = package_info_plus;
-			path = package_info_plus;
-			sourceTree = "<group>";
-		};
 		F2F2056FC0963AD7F6B73A6AB30C8787 /* .. */ = {
 			isa = PBXGroup;
 			children = (
@@ -3702,15 +3729,6 @@
 			);
 			name = plugins;
 			path = plugins;
-			sourceTree = "<group>";
-		};
-		F58D7A866F59EEE67A91D5FC73241166 /* macos */ = {
-			isa = PBXGroup;
-			children = (
-				588CE90BD066013256FAE344A75E988A /* Flutter */,
-			);
-			name = macos;
-			path = macos;
 			sourceTree = "<group>";
 		};
 		F5F13D67233CA38A6A1A9FF2775BAB8D /* wakelock_plus */ = {
@@ -3838,24 +3856,6 @@
 			path = Desktop;
 			sourceTree = "<group>";
 		};
-		FFA778BDBB78DF4BC9B08F4A36197102 /* Sources */ = {
-			isa = PBXGroup;
-			children = (
-				F1A2D58A3B855A8882052557D2983665 /* package_info_plus */,
-			);
-			name = Sources;
-			path = Sources;
-			sourceTree = "<group>";
-		};
-		FFFA8E4E92CFE734514967A1129DF372 /* package_info_plus */ = {
-			isa = PBXGroup;
-			children = (
-				AC10DAEFDA1095ED4C50EC017DD61334 /* FPPPackageInfoPlusPlugin.h */,
-			);
-			name = package_info_plus;
-			path = package_info_plus;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -3871,7 +3871,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADCCB2912ADD3D28C0B2DA2F40DEA7F4 /* FPPPackageInfoPlusPlugin.h in Headers */,
+				F16D9F51E761091123A0AB569B3B749E /* FPPPackageInfoPlusPlugin.h in Headers */,
 				077B2AA269F0444075CFE925A691CEB5 /* package_info_plus-umbrella.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4490,7 +4490,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				19F6C50ECCDC0AF4EA694254F503E21C /* PrivacyInfo.xcprivacy in Resources */,
+				BCBCCFFD1CD335EAC0B0F5F4AD21031F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4554,7 +4554,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				66389811EB580B2BB9C4175D32E00E45 /* FPPPackageInfoPlusPlugin.m in Sources */,
+				003E169D6A6898B6795B9CFB2742F924 /* FPPPackageInfoPlusPlugin.m in Sources */,
 				57638071C86E91584952DE058DEE8583 /* package_info_plus-dummy.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -5459,7 +5459,7 @@
 		};
 		3788AB44B6DBB484E04E6A35C16C21C7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */;
+			baseConfigurationReference = 84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -5968,7 +5968,7 @@
 		};
 		7BEB17A03E351652CCB86FD7A332023E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C9FD8C3A48CB31C325C299BBFF09A968 /* package_info_plus.debug.xcconfig */;
+			baseConfigurationReference = 8D7361B346692B54E5605883B1367D47 /* package_info_plus.debug.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -6730,7 +6730,7 @@
 		};
 		CF58E2DE49C06D34DAC65B3755F49D09 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C9FD8C3A48CB31C325C299BBFF09A968 /* package_info_plus.debug.xcconfig */;
+			baseConfigurationReference = 8D7361B346692B54E5605883B1367D47 /* package_info_plus.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -6830,7 +6830,7 @@
 		};
 		D3D6A39E372375445932151EA3E44D65 /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */;
+			baseConfigurationReference = 84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = NO;
@@ -6935,7 +6935,7 @@
 		};
 		F069B246C277A771EDF33EB60B56D8EA /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */;
+			baseConfigurationReference = 84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -6979,7 +6979,7 @@
 		};
 		F64461D13B8964A1B8756AC754FF973D /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F310E7B828200976C808F2B3FC052EBC /* package_info_plus.release.xcconfig */;
+			baseConfigurationReference = 84501F20897A4BFDE85EB052992A2149 /* package_info_plus.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
 				COMBINE_HIDPI_IMAGES = YES;

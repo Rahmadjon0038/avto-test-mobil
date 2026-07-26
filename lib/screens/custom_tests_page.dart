@@ -28,12 +28,19 @@ class CustomTestsPage extends StatefulWidget {
 class _CustomTestsPageState extends State<CustomTestsPage> {
   late Future<List<_CustomTestCardData>> _ticketsFuture;
   late String _accessToken;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _accessToken = widget.session.accessToken;
     _ticketsFuture = _loadTickets();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<List<_CustomTestCardData>> _loadTickets() async {
@@ -65,14 +72,15 @@ class _CustomTestsPageState extends State<CustomTestsPage> {
     List<TicketSummary> tickets,
     String accessToken,
   ) async {
-    final result = <_CustomTestCardData>[];
-    for (final ticket in tickets) {
-      final progress = ticket.locked
-          ? null
-          : await _loadProgress(ticket.id, accessToken);
-      result.add(_CustomTestCardData(ticket: ticket, progress: progress));
-    }
-    return result;
+    final results = await Future.wait(
+      tickets.map((ticket) async {
+        final progress = ticket.locked
+            ? null
+            : await _loadProgress(ticket.id, accessToken);
+        return _CustomTestCardData(ticket: ticket, progress: progress);
+      }),
+    );
+    return results;
   }
 
   Future<CustomTestProgressSummary?> _loadProgress(
@@ -129,10 +137,7 @@ class _CustomTestsPageState extends State<CustomTestsPage> {
 
                     if (snapshot.hasError) {
                       return _TicketsError(
-                        message: friendlyErrorMessage(
-                          context,
-                          snapshot.error,
-                        ),
+                        message: friendlyErrorMessage(context, snapshot.error),
                         onRetry: () {
                           setState(() {
                             _ticketsFuture = _loadTickets();
@@ -141,12 +146,15 @@ class _CustomTestsPageState extends State<CustomTestsPage> {
                       );
                     }
 
-                    final tickets = snapshot.data ?? const <_CustomTestCardData>[];
+                    final tickets =
+                        snapshot.data ?? const <_CustomTestCardData>[];
                     if (tickets.isEmpty) {
                       return const _TicketsEmpty();
                     }
 
                     return ListView.separated(
+                      key: const PageStorageKey<String>('custom-tests-list'),
+                      controller: _scrollController,
                       itemCount: tickets.length,
                       physics: const BouncingScrollPhysics(),
                       separatorBuilder: (context, index) =>
@@ -229,11 +237,7 @@ class _TicketsHeader extends StatelessWidget {
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({
-    required this.ticket,
-    required this.onTap,
-    this.progress,
-  });
+  const _TicketCard({required this.ticket, required this.onTap, this.progress});
 
   final TicketSummary ticket;
   final VoidCallback? onTap;
@@ -412,10 +416,7 @@ class _TicketsEmpty extends StatelessWidget {
 }
 
 class _CustomTestCardData {
-  const _CustomTestCardData({
-    required this.ticket,
-    required this.progress,
-  });
+  const _CustomTestCardData({required this.ticket, required this.progress});
 
   final TicketSummary ticket;
   final CustomTestProgressSummary? progress;
