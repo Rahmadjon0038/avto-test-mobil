@@ -591,7 +591,9 @@ class _TopicTestPageState extends State<TopicTestPage> {
 
     final correct = _countCorrect(questions, _answers);
     final total = questions.length;
-    final wrong = total - correct;
+    final answered = _countAnswered(questions, _answers);
+    final wrong = answered - correct;
+    final unanswered = total - answered;
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
     await _syncProgress(questions);
     if (!_resultShown && mounted) {
@@ -600,6 +602,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
         correct: correct,
         wrong: wrong,
         total: total,
+        unanswered: unanswered,
         percent: percent,
       );
     }
@@ -636,9 +639,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
           refreshToken == null ||
           refreshToken.isEmpty) {
         if (!silent && mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 friendlyErrorMessage(
@@ -667,16 +668,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
       );
     } catch (error) {
       if (!silent && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              friendlyErrorMessage(
-                context,
-                error,
-                fallbackKey: 'load_failed',
-              ),
+              friendlyErrorMessage(context, error, fallbackKey: 'load_failed'),
             ),
           ),
         );
@@ -706,10 +701,9 @@ class _TopicTestPageState extends State<TopicTestPage> {
     required int correct,
     required int wrong,
     required int total,
+    required int unanswered,
     required int percent,
   }) {
-    final answered = _answers.where((answer) => answer != null).length;
-    final unanswered = (total - answered).clamp(0, total);
     return showQuestionResultModal(
       context: context,
       correct: correct,
@@ -720,6 +714,15 @@ class _TopicTestPageState extends State<TopicTestPage> {
       onClose: () {},
       popPageOnClose: true,
     );
+  }
+
+  int _countAnswered(List<TopicQuestion> questions, List<int?> answers) {
+    var answered = 0;
+    for (var index = 0; index < questions.length; index++) {
+      if (index >= answers.length) continue;
+      if (answers[index] != null) answered += 1;
+    }
+    return answered;
   }
 
   @override
@@ -897,7 +900,6 @@ class _QuestionNavigator extends StatelessWidget {
     );
   }
 }
-
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({

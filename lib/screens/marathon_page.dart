@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -225,7 +226,31 @@ class _MarathonPageState extends State<MarathonPage> {
 
   void _saveAnswer(int questionIndex, int answerIndex) {
     if (questionIndex < 0 || questionIndex >= _visibleQuestions.length) return;
-    _answers[_visibleQuestions[questionIndex].id] = answerIndex;
+    final question = _visibleQuestions[questionIndex];
+    _answers[question.id] = answerIndex;
+    if (answerIndex != question.correctIndex) {
+      unawaited(
+        ApiClient.syncMistake(
+          accessToken: _accessToken,
+          question: {
+            'id': question.id,
+            'kind': question.kind,
+            'sourceId': question.sourceId,
+            'sourceTitle': question.sourceTitle,
+            'questionIndex': math.max(0, question.questionIndex - 1),
+            'text': question.text,
+            'image': question.image,
+            'audio': question.audio,
+            'options': question.options,
+            'correctIndex': question.correctIndex,
+            'correctAnswer': question.correctAnswer,
+            'explanation': question.explanation,
+            'hasImage': question.hasImage,
+          },
+          wrongAnswer: answerIndex,
+        ),
+      );
+    }
   }
 
   int _countCorrect() {
@@ -307,8 +332,9 @@ class _MarathonPageState extends State<MarathonPage> {
     if (_resultShown) return;
     final correct = _countCorrect();
     final total = _visibleQuestions.length;
-    final wrong = total - correct;
-    final unanswered = (total - _answers.length).clamp(0, total);
+    final answered = _answers.length;
+    final wrong = answered - correct;
+    final unanswered = (total - answered).clamp(0, total);
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
     _resultShown = true;
     await showQuestionResultModal(

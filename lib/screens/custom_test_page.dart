@@ -564,7 +564,9 @@ class _CustomTestPageState extends State<CustomTestPage> {
 
     final correct = _countCorrect(questions, _answers);
     final total = questions.length;
-    final wrong = total - correct;
+    final answered = _countAnswered(questions, _answers);
+    final wrong = answered - correct;
+    final unanswered = total - answered;
     final percent = total == 0 ? 0 : ((correct / total) * 100).round();
     await _syncProgress(questions);
     if (!_resultShown && mounted) {
@@ -573,6 +575,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
         correct: correct,
         wrong: wrong,
         total: total,
+        unanswered: unanswered,
         percent: percent,
       );
     }
@@ -609,9 +612,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
           refreshToken == null ||
           refreshToken.isEmpty) {
         if (!silent && mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 friendlyErrorMessage(
@@ -639,16 +640,10 @@ class _CustomTestPageState extends State<CustomTestPage> {
       );
     } catch (error) {
       if (!silent && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              friendlyErrorMessage(
-                context,
-                error,
-                fallbackKey: 'load_failed',
-              ),
+              friendlyErrorMessage(context, error, fallbackKey: 'load_failed'),
             ),
           ),
         );
@@ -671,10 +666,9 @@ class _CustomTestPageState extends State<CustomTestPage> {
     required int correct,
     required int wrong,
     required int total,
+    required int unanswered,
     required int percent,
   }) {
-    final answered = _answers.where((answer) => answer != null).length;
-    final unanswered = (total - answered).clamp(0, total);
     return showQuestionResultModal(
       context: context,
       correct: correct,
@@ -685,6 +679,15 @@ class _CustomTestPageState extends State<CustomTestPage> {
       onClose: () {},
       popPageOnClose: true,
     );
+  }
+
+  int _countAnswered(List<TopicQuestion> questions, List<int?> answers) {
+    var answered = 0;
+    for (var index = 0; index < questions.length; index++) {
+      if (index >= answers.length) continue;
+      if (answers[index] != null) answered += 1;
+    }
+    return answered;
   }
 
   Future<void> _openImagePreview(String imageUrl) {

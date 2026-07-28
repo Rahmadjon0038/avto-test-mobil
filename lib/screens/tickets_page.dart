@@ -23,6 +23,7 @@ class _TicketsPageState extends State<TicketsPage> {
   late Future<_TicketsLoadResult> _ticketsFuture;
   late String _accessToken;
   String? _languageCode;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -41,6 +42,12 @@ class _TicketsPageState extends State<TicketsPage> {
     setState(() {
       _ticketsFuture = _loadTickets();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<_TicketsLoadResult> _loadTickets() async {
@@ -109,10 +116,7 @@ class _TicketsPageState extends State<TicketsPage> {
 
                     if (snapshot.hasError) {
                       return _TicketsError(
-                        message: friendlyErrorMessage(
-                          context,
-                          snapshot.error,
-                        ),
+                        message: friendlyErrorMessage(context, snapshot.error),
                         onRetry: () {
                           setState(() {
                             _ticketsFuture = _loadTickets();
@@ -133,6 +137,8 @@ class _TicketsPageState extends State<TicketsPage> {
                     }
 
                     return ListView.separated(
+                      key: const PageStorageKey<String>('tickets-list'),
+                      controller: _scrollController,
                       itemCount: tickets.length,
                       physics: const BouncingScrollPhysics(),
                       separatorBuilder: (context, index) =>
@@ -253,16 +259,12 @@ class _TicketCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: locked
-                      ? AppColors.surfaceTint
-                      : AppColors.surfaceTint,
+                  color: locked ? AppColors.surfaceTint : AppColors.surfaceTint,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   locked ? Icons.lock_rounded : Icons.receipt_long_rounded,
-                  color: locked
-                      ? AppColors.textSoft
-                      : AppColors.primary,
+                  color: locked ? AppColors.textSoft : AppColors.primary,
                   size: 23,
                 ),
               ),

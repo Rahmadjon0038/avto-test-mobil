@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_colors.dart';
 import '../core/media_urls.dart';
@@ -28,14 +27,12 @@ class MistakesPage extends StatefulWidget {
 class _MistakesPageState extends State<MistakesPage> {
   late Future<List<MistakeQuestion>> _mistakesFuture;
   final Map<String, int> _answers = <String, int>{};
-  Set<String> _hiddenMistakeIds = <String>{};
   int _currentIndex = 0;
   TabKey _tab = TabKey.list;
   bool _saving = false;
   bool _practiceFinished = false;
   bool _shuffleQuestions = false;
   bool _autoAdvanceEnabled = true;
-  bool _hiddenMistakesLoaded = false;
   late String _accessToken;
   String? _languageCode;
   final GlobalKey _questionCardKey = GlobalKey();
@@ -47,7 +44,6 @@ class _MistakesPageState extends State<MistakesPage> {
     _accessToken = widget.session.accessToken;
     _languageCode = AppLanguageStore.currentCode;
     _mistakesFuture = _loadMistakes();
-    _loadHiddenMistakes();
   }
 
   @override
@@ -101,39 +97,33 @@ class _MistakesPageState extends State<MistakesPage> {
     }
   }
 
-  static const String _hiddenMistakeStorageKey = 'hidden_mistake_question_ids';
-
-  Future<void> _loadHiddenMistakes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList(_hiddenMistakeStorageKey) ?? <String>[];
-    if (!mounted) return;
-    setState(() {
-      _hiddenMistakeIds = saved.toSet();
-      _hiddenMistakesLoaded = true;
-    });
-  }
-
-  List<MistakeQuestion> _visibleMistakes(List<MistakeQuestion> questions) {
-    return questions
-        .where((question) => !_hiddenMistakeIds.contains(question.id))
-        .toList();
-  }
-
-  Future<void> _hideMistake(MistakeQuestion question) async {
-    final nextHidden = Set<String>.from(_hiddenMistakeIds)..add(question.id);
-    setState(() {
-      _hiddenMistakeIds = nextHidden;
-      _answers.remove(question.id);
-      if (_practiceFinished && _tab == TabKey.practice) {
-        _practiceFinished = false;
-      }
-    });
-
+  Future<void> _hideMistake(
+    MistakeQuestion question,
+    List<MistakeQuestion> currentQuestions,
+  ) async {
     try {
-      await ApiClient.mistakesProgress(
+      await ApiClient.deleteMistake(
         accessToken: _accessToken,
-        answers: <String, int>{question.id: question.correctIndex},
+        questionKey: question.id,
       );
+      if (!mounted) return;
+      final updatedQuestions = currentQuestions
+          .where((item) => item.id != question.id)
+          .toList();
+      final nextIndex = updatedQuestions.isEmpty
+          ? 0
+          : _currentIndex.clamp(0, updatedQuestions.length - 1);
+      setState(() {
+        _answers.remove(question.id);
+        if (_practiceFinished && _tab == TabKey.practice) {
+          _practiceFinished = false;
+        }
+        _mistakesFuture = Future.value(updatedQuestions);
+        _currentIndex = nextIndex;
+        if (_tab == TabKey.practice && updatedQuestions.isEmpty) {
+          _tab = TabKey.list;
+        }
+      });
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,9 +135,6 @@ class _MistakesPageState extends State<MistakesPage> {
         );
       }
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_hiddenMistakeStorageKey, nextHidden.toList());
   }
 
   @override
@@ -186,10 +173,6 @@ class _MistakesPageState extends State<MistakesPage> {
               }
 
               final questions = snapshot.data ?? const <MistakeQuestion>[];
-              if (!_hiddenMistakesLoaded) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final visibleQuestions = _visibleMistakes(questions);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +203,7 @@ class _MistakesPageState extends State<MistakesPage> {
                   const SizedBox(height: 16),
                   _Tabs(
                     tab: _tab,
-                    count: visibleQuestions.length,
+                    count: questions.length,
                     onChanged: (nextTab) {
                       setState(() => _tab = nextTab);
                     },
@@ -228,8 +211,8 @@ class _MistakesPageState extends State<MistakesPage> {
                   const SizedBox(height: 14),
                   Expanded(
                     child: _tab == TabKey.list
-                        ? _buildListTab(context, visibleQuestions)
-                        : _buildPracticeTab(context, visibleQuestions),
+                        ? _buildListTab(context, questions)
+                        : _buildPracticeTab(context, questions),
                   ),
                 ],
               );
@@ -267,7 +250,7 @@ class _MistakesPageState extends State<MistakesPage> {
               _currentIndex = index;
             });
           },
-          onDeleteTap: () => _hideMistake(question),
+          onDeleteTap: () => _hideMistake(question, questions),
         );
       },
     );
@@ -347,7 +330,7 @@ class _MistakesPageState extends State<MistakesPage> {
                     key: _questionCardKey,
                     question: currentQuestion,
                     selectedIndex: selected,
-                    onDeleteTap: () => _hideMistake(currentQuestion),
+                    onDeleteTap: () => _hideMistake(currentQuestion, questions),
                     onSelect: (index) {
                       if (_practiceFinished) {
                         _showLockedRestartModal();
@@ -486,9 +469,9 @@ class _MistakesPageState extends State<MistakesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            AppStrings.of(context)
-                .t('mistakes_synced')
-                .replaceFirst('{fixed}', fixed),
+            AppStrings.of(
+              context,
+            ).t('mistakes_synced').replaceFirst('{fixed}', fixed),
           ),
         ),
       );
@@ -501,9 +484,7 @@ class _MistakesPageState extends State<MistakesPage> {
       });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             friendlyErrorMessage(
