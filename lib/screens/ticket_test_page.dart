@@ -45,6 +45,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
   bool _shuffleQuestions = false;
   bool _autoAdvanceEnabled = true;
   List<TopicQuestion>? _loadedQuestions;
+  List<int> _currentOptionOrder = <int>[];
   final Map<String, String> _audioOverrides = {};
   late String _accessToken;
   String? _languageCode;
@@ -74,6 +75,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _selectedIndex = null;
       _resultShown = false;
       _loadedQuestions = null;
+      _currentOptionOrder = <int>[];
     });
   }
 
@@ -187,12 +189,6 @@ class _TicketTestPageState extends State<TicketTestPage> {
       result.shuffle(math.Random(seed));
     }
 
-    if (_shuffleQuestions) {
-      final seed = _shuffleSeed ?? DateTime.now().microsecondsSinceEpoch;
-      return result
-          .map((question) => _shuffleQuestionOptions(question, seed))
-          .toList();
-    }
     return result;
   }
 
@@ -223,6 +219,46 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _selectedIndex = _answerFor(_currentIndex);
       _resultShown = draft?.completed ?? false;
     });
+    _refreshCurrentOptionOrder(forceNew: false);
+  }
+
+  List<int> _buildCurrentOptionOrder(TopicQuestion question, {required bool forceNew}) {
+    final order = List<int>.generate(question.options.length, (index) => index);
+    if (!_shuffleQuestions || order.length < 2) {
+      return order;
+    }
+
+    final baseSeed = _shuffleSeed ?? DateTime.now().microsecondsSinceEpoch;
+    final visitSeed = forceNew ? DateTime.now().microsecondsSinceEpoch : (_currentIndex + 1);
+    order.shuffle(math.Random(baseSeed ^ _stableHash(question.id.trim()) ^ visitSeed));
+    return order;
+  }
+
+  void _refreshCurrentOptionOrder({required bool forceNew}) {
+    final questions = _loadedQuestions;
+    if (!mounted || questions == null || questions.isEmpty) return;
+    if (_currentIndex < 0 || _currentIndex >= questions.length) return;
+
+    final question = questions[_currentIndex];
+    final nextOrder = _buildCurrentOptionOrder(question, forceNew: forceNew);
+    final canonicalAnswer = _answerFor(_currentIndex);
+    final nextSelectedIndex = canonicalAnswer == null ? null : nextOrder.indexOf(canonicalAnswer);
+
+    setState(() {
+      _currentOptionOrder = nextOrder;
+      _selectedIndex = nextSelectedIndex != null && nextSelectedIndex >= 0 ? nextSelectedIndex : null;
+    });
+  }
+
+  int? _canonicalAnswerForDisplayIndex(int displayIndex) {
+    if (displayIndex < 0 || displayIndex >= _currentOptionOrder.length) return null;
+    return _currentOptionOrder[displayIndex];
+  }
+
+  int? _displayIndexForCanonicalAnswer(int canonicalIndex) {
+    if (canonicalIndex < 0 || canonicalIndex >= _currentOptionOrder.length) return null;
+    final displayIndex = _currentOptionOrder.indexOf(canonicalIndex);
+    return displayIndex < 0 ? null : displayIndex;
   }
 
   @override
@@ -269,6 +305,9 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
+                final optionOrder = _currentOptionOrder.length == question.options.length
+                    ? _currentOptionOrder
+                    : List<int>.generate(question.options.length, (index) => index);
                 final locked = _resultShown;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,7 +456,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                             const SizedBox(height: 14),
                             ...List.generate(question.options.length, (index) {
                               final selected = _selectedIndex == index;
-                              final isCorrect = index == question.correctIndex;
+                              final isCorrect = index == _displayIndexForCanonicalAnswer(question.correctIndex);
                               final showResult = _selectedIndex != null;
                               final backgroundColor = showResult
                                   ? isCorrect
@@ -451,10 +490,12 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                         : _answerFor(_currentIndex) != null
                                         ? null
                                         : () {
+                                            final canonicalIndex = _canonicalAnswerForDisplayIndex(index);
+                                            if (canonicalIndex == null) return;
                                             setState(() {
                                               _selectedIndex = index;
                                             });
-                                            _saveAnswer(_currentIndex, index);
+                                            _saveAnswer(_currentIndex, canonicalIndex);
                                             final questions = _loadedQuestions;
                                             if (_autoAdvanceEnabled &&
                                                 questions != null &&
@@ -507,7 +548,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: Text(
-                                              question.options[index],
+                                              question.options[optionOrder[index]],
                                               style: TextStyle(
                                                 fontSize: 13.5,
                                                 height: 1.3,
@@ -677,8 +718,8 @@ class _TicketTestPageState extends State<TicketTestPage> {
     if (questions == null || _currentIndex >= questions.length - 1) return;
     setState(() {
       _currentIndex += 1;
-      _selectedIndex = _answerFor(_currentIndex);
     });
+    _refreshCurrentOptionOrder(forceNew: true);
     _persistDraft();
     _scrollCurrentQuestionIntoView();
   }
@@ -687,8 +728,8 @@ class _TicketTestPageState extends State<TicketTestPage> {
     if (_currentIndex <= 0) return;
     setState(() {
       _currentIndex -= 1;
-      _selectedIndex = _answerFor(_currentIndex);
     });
+    _refreshCurrentOptionOrder(forceNew: true);
     _persistDraft();
     _scrollCurrentQuestionIntoView();
   }
@@ -702,6 +743,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
       _resultShown = false;
       _loadedQuestions = null;
       _savedDraft = null;
+      _currentOptionOrder = <int>[];
       _questionsFuture = _loadQuestions();
     });
   }
@@ -777,29 +819,6 @@ class _TicketTestPageState extends State<TicketTestPage> {
         percent: percent,
       );
     }
-  }
-
-  TopicQuestion _shuffleQuestionOptions(TopicQuestion question, int seed) {
-    if (question.options.length < 2) return question;
-
-    final entries = question.options.asMap().entries.toList();
-    final random = math.Random(seed ^ _stableHash(question.id.trim()));
-    entries.shuffle(random);
-
-    final options = entries.map((entry) => entry.value).toList();
-    final newCorrectIndex = entries.indexWhere(
-      (entry) => entry.key == question.correctIndex,
-    );
-
-    return TopicQuestion(
-      id: question.id,
-      text: question.text,
-      options: options,
-      correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
-      explanation: question.explanation,
-      image: question.image,
-      audio: question.audio,
-    );
   }
 
   int _stableHash(String value) {

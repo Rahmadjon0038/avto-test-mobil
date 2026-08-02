@@ -35,12 +35,12 @@ class _MarathonPageState extends State<MarathonPage> {
 
   int _currentIndex = 0;
   int _nextBankIndex = 3;
+  int _marathonSeed = 0;
   bool _hasMoreBank = true;
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _sessionExpired = false;
   bool _resultShown = false;
-  bool _shuffleQuestions = false;
   bool _autoAdvanceEnabled = true;
   Timer? _advanceTimer;
   String? _languageCode;
@@ -50,6 +50,7 @@ class _MarathonPageState extends State<MarathonPage> {
     super.initState();
     _accessToken = widget.session.accessToken;
     _languageCode = AppLanguageStore.currentCode;
+    _marathonSeed = _generateMarathonSeed();
     _loadInitial();
   }
 
@@ -70,10 +71,16 @@ class _MarathonPageState extends State<MarathonPage> {
     super.dispose();
   }
 
+  int _generateMarathonSeed() => DateTime.now().microsecondsSinceEpoch;
+
+  Future<void> _restartMarathon() async {
+    _marathonSeed = _generateMarathonSeed();
+    await _loadInitial();
+  }
+
   Future<void> _loadInitial() async {
     final settings = await QuestionPageSettingsStore.load();
     if (!mounted) return;
-    _shuffleQuestions = settings.shuffleQuestions;
     _autoAdvanceEnabled = settings.autoAdvance;
 
     setState(() {
@@ -93,11 +100,10 @@ class _MarathonPageState extends State<MarathonPage> {
         accessToken: _accessToken,
         offset: 0,
         limit: 20,
+        shuffle: true,
+        seed: _marathonSeed,
       );
       final fetched = _parseQuestions(body);
-      if (_shuffleQuestions) {
-        fetched.shuffle();
-      }
       if (!mounted) return;
       unawaited(
         OfflineCacheStore.prefetchAudioUrls(
@@ -157,11 +163,10 @@ class _MarathonPageState extends State<MarathonPage> {
         accessToken: _accessToken,
         offset: _bank.length,
         limit: 20,
+        shuffle: true,
+        seed: _marathonSeed,
       );
       final fetched = _parseQuestions(body);
-      if (_shuffleQuestions) {
-        fetched.shuffle();
-      }
       if (!mounted) return const <AnswerQuestion>[];
       unawaited(
         OfflineCacheStore.prefetchAudioUrls(
@@ -550,30 +555,15 @@ class _MarathonPageState extends State<MarathonPage> {
                           _SettingsButton(
                             onTap: () => showQuestionPageSettingsSheet(
                               context: context,
-                              shuffleQuestions: _shuffleQuestions,
+                              shuffleQuestions: true,
                               autoAdvance: _autoAdvanceEnabled,
-                              onShuffleChanged: (value) {
-                                setState(() {
-                                  _shuffleQuestions = value;
-                                  _advanceTimer?.cancel();
-                                  _advanceTimer = null;
-                                  _isLoading = true;
-                                  _resultShown = false;
-                                  _answers.clear();
-                                  _bank.clear();
-                                  _visibleQuestions.clear();
-                                  _currentIndex = 0;
-                                  _nextBankIndex = 3;
-                                  _hasMoreBank = true;
-                                  _sessionExpired = false;
-                                });
-                                unawaited(_loadInitial());
-                              },
+                              onShuffleChanged: (_) {},
                               onAutoAdvanceChanged: (value) {
                                 setState(() {
                                   _autoAdvanceEnabled = value;
                                 });
                               },
+                              showShuffleQuestions: false,
                             ),
                           ),
                         ],
@@ -884,7 +874,7 @@ class _MarathonPageState extends State<MarathonPage> {
                                           }
                                           await _showFinishModal();
                                         },
-                                  onRestart: _loadInitial,
+                                  onRestart: _restartMarathon,
                                 ),
                               ],
                             ),
@@ -919,7 +909,7 @@ class _MarathonPageState extends State<MarathonPage> {
       context: context,
       title: 'Test tugadi',
       message: 'Bu test yakunlangan. Davom etish uchun uni qayta boshlang.',
-      onRestart: () async => _loadInitial(),
+      onRestart: _restartMarathon,
       restartLabel: 'Qayta boshlash',
     );
   }

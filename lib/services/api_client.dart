@@ -580,6 +580,8 @@ class ApiClient {
     int limit = 40,
     String search = '',
     String filter = 'all',
+    bool shuffle = false,
+    int? seed,
   }) async {
     final params = <String, String>{
       'offset': '$offset',
@@ -587,8 +589,15 @@ class ApiClient {
       'q': search,
       'filter': filter,
     };
+    if (shuffle) {
+      params['shuffle'] = '1';
+    }
+    if (seed != null) {
+      params['seed'] = '$seed';
+    }
     final uri = _uri('/api/answers', queryParameters: params);
-    final cacheId = '$offset|$limit|$search|$filter';
+    final cacheId =
+        '$offset|$limit|$search|$filter|${shuffle ? 1 : 0}|${seed ?? ''}';
     try {
       final response = await http.get(
         uri,
