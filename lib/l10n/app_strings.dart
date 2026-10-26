@@ -97,8 +97,8 @@ class AppStrings {
       'marathon': 'Marafon rejimi',
       'marathon_subtitle':
           'Uzluksiz savollar: tezlik va aniqlikni oshiring.',
-      'custom_tests': 'Sozlamali testlar',
-      'custom_tests_subtitle': 'Savol soni va rejimni o‘zingiz tanlang.',
+      'custom_tests': 'Random',
+      'custom_tests_subtitle': 'Savol sonini tanlang: savollar har safar tasodifiy tushadi.',
       'mistakes': 'Mening xatolarim',
       'mistakes_subtitle':
           'Xato qilgan savollaringizni qayta ko‘rib chiqing.',
@@ -198,7 +198,7 @@ class AppStrings {
       'no_questions_custom': 'Bu testda savollar mavjud emas',
       'no_questions_custom_sub': 'Hozircha ushbu test uchun savollar qo‘shilmagan.',
       'custom_tests_locked': 'Hozircha ochilmagan',
-      'custom_tests_empty': 'Sozlamali testlar topilmadi',
+      'custom_tests_empty': 'Random testlar topilmadi',
       'session_ended_title': 'Sessiya tugadi',
       'session_ended_subtitle': 'Qayta kirish kerak.',
       'not_loaded_title': 'Yuklanmadi',
@@ -287,8 +287,8 @@ class AppStrings {
       'marathon': 'Марафон режими',
       'marathon_subtitle':
           'Узлуксиз саволлар: тезлик ва аниқликни оширинг.',
-      'custom_tests': 'Созламали тестлар',
-      'custom_tests_subtitle': 'Савол сони ва режимни ўзингиз танланг.',
+      'custom_tests': 'Рандом',
+      'custom_tests_subtitle': 'Савол сонини танланг: саволлар ҳар сафар тасодифий тушади.',
       'mistakes': 'Менинг хатоларим',
       'mistakes_subtitle':
           'Хато қилган саволларингизни қайта кўриб чиқинг.',
@@ -388,7 +388,7 @@ class AppStrings {
       'no_questions_custom': 'Бу тестда саволлар мавжуд эмас',
       'no_questions_custom_sub': 'Ҳозирча ушбу тест учун саволлар қўшилмаган.',
       'custom_tests_locked': 'Ҳозирча очилмаган',
-      'custom_tests_empty': 'Созламали тестлар топилмади',
+      'custom_tests_empty': 'Рандом тестлар топилмади',
       'session_ended_title': 'Сессия тугади',
       'session_ended_subtitle': 'Қайта кириш керак.',
       'not_loaded_title': 'Юкланмади',
@@ -479,8 +479,8 @@ class AppStrings {
       'marathon': 'Режим марафона',
       'marathon_subtitle':
           'Непрерывные вопросы: повышайте скорость и точность.',
-      'custom_tests': 'Настраиваемые тесты',
-      'custom_tests_subtitle': 'Выберите количество вопросов и режим.',
+      'custom_tests': 'Рандом',
+      'custom_tests_subtitle': 'Выберите количество вопросов: вопросы каждый раз выпадают случайно.',
       'mistakes': 'Мои ошибки',
       'mistakes_subtitle':
           'Переосмыслите вопросы, где вы ошиблись.',
@@ -581,7 +581,7 @@ class AppStrings {
       'no_questions_custom': 'В этом тесте нет вопросов',
       'no_questions_custom_sub': 'Пока для этого теста нет вопросов.',
       'custom_tests_locked': 'Пока не открыто',
-      'custom_tests_empty': 'Настраиваемые тесты не найдены',
+      'custom_tests_empty': 'Рандом-тесты не найдены',
       'session_ended_title': 'Сессия завершена',
       'session_ended_subtitle': 'Требуется повторный вход.',
       'not_loaded_title': 'Не загружено',

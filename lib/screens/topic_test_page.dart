@@ -13,6 +13,7 @@ import '../services/offline_cache_store.dart';
 import '../services/question_page_settings_store.dart';
 import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_network_image.dart';
 import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
@@ -33,6 +34,7 @@ class TopicTestPage extends StatefulWidget {
 }
 
 class _TopicTestPageState extends State<TopicTestPage> {
+  final QuestionImagePreloader _imagePreloader = QuestionImagePreloader();
   late Future<List<TopicQuestion>> _questionsFuture;
   final List<int?> _answers = <int?>[];
   int _currentIndex = 0;
@@ -182,6 +184,11 @@ class _TopicTestPageState extends State<TopicTestPage> {
 
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
+                _imagePreloader.run(
+                  context,
+                  questions.map((item) => item.image).toList(),
+                  _currentIndex,
+                );
                 final isLast = _currentIndex == questions.length - 1;
                 final locked = _resultShown;
 
@@ -472,8 +479,10 @@ class _TopicTestPageState extends State<TopicTestPage> {
     );
   }
 
+  // Xom qiymat: QuestionNetworkImage o'zi ekran o'lchamiga mos variant (s/m/l) va kesh/zaxirani tanlaydi.
   String _questionImageUrl(TopicQuestion question) {
-    return resolveQuestionImageUrl(question.image);
+    final value = question.image.trim();
+    return value.isEmpty ? defaultQuestionImageAsset : value;
   }
 
   Widget _buildQuestionImage(TopicQuestion question) {
@@ -487,34 +496,7 @@ class _TopicTestPageState extends State<TopicTestPage> {
       );
     }
 
-    return Image.network(
-      imageUrl,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/default.png',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-        );
-      },
-    );
+    return QuestionNetworkImage(rawImage: imageUrl, width: double.infinity, height: 120, fit: BoxFit.fitWidth);
   }
 
   int? _answerFor(int index) {
@@ -753,26 +735,15 @@ class _TopicTestPageState extends State<TopicTestPage> {
                     borderRadius: BorderRadius.circular(20),
                     child: isAsset
                         ? Image.asset(imageUrl, fit: BoxFit.contain)
-                        : Image.network(
-                            imageUrl,
+                        : QuestionNetworkImage(
+                            rawImage: imageUrl,
                             fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: SizedBox(
-                                  height: 34,
-                                  width: 34,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.6,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                                  'assets/default.png',
-                                  fit: BoxFit.contain,
-                                ),
+                            variant: ImageVariant.l,
+                            placeholderBuilder: (context) => QuestionNetworkImage(
+                              rawImage: imageUrl,
+                              fit: BoxFit.contain,
+                              variant: ImageVariant.m,
+                            ),
                           ),
                   ),
                 ),

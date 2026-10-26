@@ -13,6 +13,7 @@ import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
 import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
+import '../widgets/question_network_image.dart';
 
 class MistakesPage extends StatefulWidget {
   const MistakesPage({super.key, required this.session, this.onSessionUpdated});
@@ -1248,31 +1249,11 @@ Widget _buildQuestionImage(MistakeQuestion question) {
     );
   }
 
-  return Image.network(
-    imageUrl,
-    width: double.infinity,
+  // Kenglik bo'yicha tegishli variant (s/m/l) tanlanadi; balandlik rasm nisbatiga qarab (fitWidth).
+  return QuestionNetworkImage(
+    rawImage: question.image,
     fit: BoxFit.fitWidth,
-    alignment: Alignment.center,
-    loadingBuilder: (context, child, loadingProgress) {
-      if (loadingProgress == null) return child;
-      return const SizedBox(
-        height: 120,
-        width: double.infinity,
-        child: Center(
-          child: SizedBox(
-            height: 28,
-            width: 28,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-        ),
-      );
-    },
-    errorBuilder: (context, error, stackTrace) => Image.asset(
-      defaultQuestionImageAsset,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-    ),
+    placeholderBuilder: (context) => const SizedBox(height: 120, width: double.infinity),
   );
 }
 

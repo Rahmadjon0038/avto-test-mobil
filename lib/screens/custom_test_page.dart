@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
@@ -10,6 +12,7 @@ import '../services/api_client.dart';
 import '../services/question_page_settings_store.dart';
 import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_network_image.dart';
 import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
@@ -29,9 +32,15 @@ class CustomTestPage extends StatefulWidget {
   State<CustomTestPage> createState() => _CustomTestPageState();
 }
 
+int _newPoolSeed() => math.Random().nextInt(0x7fffffff) + 1;
+
 class _CustomTestPageState extends State<CustomTestPage> {
+  final QuestionImagePreloader _imagePreloader = QuestionImagePreloader();
   late Future<List<TopicQuestion>> _questionsFuture;
   final List<int?> _answers = <int?>[];
+  // Savollar to'plami shu seed bilan biletlar bankidan tasodifiy tanlanadi: har kirishda va har
+  // "qayta boshlash"da yangilanadi (server ham progress hisoblashda xuddi shu seedni ishlatadi).
+  int _poolSeed = _newPoolSeed();
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _resultShown = false;
@@ -77,6 +86,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
       final questions = await ApiClient.customTestQuestions(
         accessToken: _accessToken,
         testId: widget.ticket.id,
+        seed: _poolSeed,
       );
       final result = List<TopicQuestion>.from(questions);
       if (_shuffleQuestions) {
@@ -103,6 +113,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
       return ApiClient.customTestQuestions(
         accessToken: active.accessToken,
         testId: widget.ticket.id,
+        seed: _poolSeed,
       );
     }
   }
@@ -150,6 +161,11 @@ class _CustomTestPageState extends State<CustomTestPage> {
 
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
+                _imagePreloader.run(
+                  context,
+                  questions.map((item) => item.image).toList(),
+                  _currentIndex,
+                );
                 final locked = _resultShown;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,8 +452,10 @@ class _CustomTestPageState extends State<CustomTestPage> {
     );
   }
 
+  // Xom qiymat: QuestionNetworkImage o'zi ekran o'lchamiga mos variant (s/m/l) va kesh/zaxirani tanlaydi.
   String _questionImageUrl(TopicQuestion question) {
-    return resolveQuestionImageUrl(question.image);
+    final value = question.image.trim();
+    return value.isEmpty ? defaultQuestionImageAsset : value;
   }
 
   Widget _buildQuestionImage(TopicQuestion question) {
@@ -451,34 +469,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
       );
     }
 
-    return Image.network(
-      imageUrl,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/default.png',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-        );
-      },
-    );
+    return QuestionNetworkImage(rawImage: imageUrl, width: double.infinity, height: 120, fit: BoxFit.fitWidth);
   }
 
   int? _answerFor(int index) {
@@ -531,6 +522,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
 
   void _restartCurrentTest() {
     setState(() {
+      _poolSeed = _newPoolSeed();
       _answers.clear();
       _currentIndex = 0;
       _selectedIndex = null;
@@ -605,6 +597,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
         accessToken: _accessToken,
         testId: widget.ticket.id,
         answers: payload,
+        seed: _poolSeed,
       );
     } on ApiException catch (error) {
       final refreshToken = widget.session.refreshToken;
@@ -637,6 +630,7 @@ class _CustomTestPageState extends State<CustomTestPage> {
         accessToken: active.accessToken,
         testId: widget.ticket.id,
         answers: payload,
+        seed: _poolSeed,
       );
     } catch (error) {
       if (!silent && mounted) {
@@ -712,26 +706,15 @@ class _CustomTestPageState extends State<CustomTestPage> {
                     borderRadius: BorderRadius.circular(20),
                     child: isAsset
                         ? Image.asset(imageUrl, fit: BoxFit.contain)
-                        : Image.network(
-                            imageUrl,
+                        : QuestionNetworkImage(
+                            rawImage: imageUrl,
                             fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: SizedBox(
-                                  height: 34,
-                                  width: 34,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.6,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                                  'assets/default.png',
-                                  fit: BoxFit.contain,
-                                ),
+                            variant: ImageVariant.l,
+                            placeholderBuilder: (context) => QuestionNetworkImage(
+                              rawImage: imageUrl,
+                              fit: BoxFit.contain,
+                              variant: ImageVariant.m,
+                            ),
                           ),
                   ),
                 ),

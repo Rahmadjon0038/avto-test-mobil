@@ -273,7 +273,8 @@ class ApiClient {
     final lang = _langParam();
     try {
       final response = await http.get(
-        Uri.parse('$apiBaseUrl/api/custom-tests'),
+        // compact=1: 62 ta emas, 12 ta tugma (20…1000 ta); har bir kartaga progress so'rovi ham shunga kamayadi.
+        Uri.parse('$apiBaseUrl/api/custom-tests?compact=1'),
         headers: _jsonHeaders(accessToken: accessToken),
       );
       final body = _decodeBody(response);
@@ -769,11 +770,15 @@ class ApiClient {
   static Future<List<TopicQuestion>> customTestQuestions({
     required String accessToken,
     required String testId,
+    int? seed,
   }) async {
     final lang = _langParam();
     try {
       final response = await http.get(
-        _uri('/api/custom-tests/$testId'),
+        _uri(
+          '/api/custom-tests/$testId',
+          queryParameters: {if (seed != null) 'seed': '$seed'},
+        ),
         headers: _jsonHeaders(accessToken: accessToken),
       );
       final body = _decodeBody(response);
@@ -929,11 +934,13 @@ class ApiClient {
     required String accessToken,
     required String testId,
     required Map<String, int> answers,
+    int? seed,
   }) async {
     final response = await http.post(
       _uri('/api/custom-test-progress/$testId'),
       headers: _jsonHeaders(accessToken: accessToken),
-      body: jsonEncode({'answers': answers}),
+      // seed: serverga qaysi tasodifiy to'plam ustida hisoblashni bildiradi.
+      body: jsonEncode({'answers': answers, 'seed': ?seed}),
     );
     final body = _decodeBody(response);
     if (response.statusCode >= 400) {

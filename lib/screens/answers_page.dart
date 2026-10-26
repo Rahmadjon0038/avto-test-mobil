@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import '../core/app_colors.dart';
-import '../core/media_urls.dart';
 import '../models/auth_session.dart';
 import '../models/answer_question.dart';
 import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_network_image.dart';
 
 class AnswersPage extends StatefulWidget {
   const AnswersPage({super.key, required this.session, this.onSessionUpdated});
@@ -516,10 +516,11 @@ class _AnswerCard extends StatelessWidget {
                 border: Border.all(color: AppColors.border),
               ),
               clipBehavior: Clip.antiAlias,
-              child: Image.network(
-                _resolveImage(question.image),
+              child: QuestionNetworkImage(
+                rawImage: question.image,
+                height: 150,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => const Center(
+                errorChild: const Center(
                   child: Icon(Icons.image_not_supported_outlined),
                 ),
               ),
@@ -656,6 +657,3 @@ class _AnswerCard extends StatelessWidget {
   }
 }
 
-String _resolveImage(String image) {
-  return resolveQuestionImageUrl(image);
-}

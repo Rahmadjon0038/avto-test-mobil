@@ -12,6 +12,7 @@ import '../services/api_client.dart';
 import '../services/offline_cache_store.dart';
 import '../services/question_page_settings_store.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_network_image.dart';
 import '../widgets/question_result_modal.dart';
 import '../widgets/question_swipe_detector.dart';
 
@@ -26,6 +27,7 @@ class MarathonPage extends StatefulWidget {
 }
 
 class _MarathonPageState extends State<MarathonPage> {
+  final QuestionImagePreloader _imagePreloader = QuestionImagePreloader();
   late String _accessToken;
   final List<AnswerQuestion> _bank = <AnswerQuestion>[];
   final List<AnswerQuestion> _visibleQuestions = <AnswerQuestion>[];
@@ -354,8 +356,10 @@ class _MarathonPageState extends State<MarathonPage> {
     );
   }
 
+  // Xom qiymat: QuestionNetworkImage o'zi ekran o'lchamiga mos variant (s/m/l) va kesh/zaxirani tanlaydi.
   String _questionImageUrl(AnswerQuestion question) {
-    return resolveQuestionImageUrl(question.image);
+    final value = question.image.trim();
+    return value.isEmpty ? defaultQuestionImageAsset : value;
   }
 
   Widget _buildQuestionImage(AnswerQuestion question) {
@@ -369,34 +373,7 @@ class _MarathonPageState extends State<MarathonPage> {
       );
     }
 
-    return Image.network(
-      imageUrl,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      alignment: Alignment.center,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: Center(
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/default.png',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.center,
-        );
-      },
-    );
+    return QuestionNetworkImage(rawImage: imageUrl, width: double.infinity, height: 120, fit: BoxFit.fitWidth);
   }
 
   Future<void> _openImagePreview(String imageUrl) {
@@ -421,26 +398,15 @@ class _MarathonPageState extends State<MarathonPage> {
                     borderRadius: BorderRadius.circular(20),
                     child: isAsset
                         ? Image.asset(imageUrl, fit: BoxFit.contain)
-                        : Image.network(
-                            imageUrl,
+                        : QuestionNetworkImage(
+                            rawImage: imageUrl,
                             fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: SizedBox(
-                                  height: 34,
-                                  width: 34,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.6,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                                  'assets/default.png',
-                                  fit: BoxFit.contain,
-                                ),
+                            variant: ImageVariant.l,
+                            placeholderBuilder: (context) => QuestionNetworkImage(
+                              rawImage: imageUrl,
+                              fit: BoxFit.contain,
+                              variant: ImageVariant.m,
+                            ),
                           ),
                   ),
                 ),
@@ -466,6 +432,11 @@ class _MarathonPageState extends State<MarathonPage> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final question = _currentQuestion;
+    _imagePreloader.run(
+      context,
+      _visibleQuestions.map((item) => item.image).toList(),
+      _currentIndex,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,

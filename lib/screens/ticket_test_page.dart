@@ -16,6 +16,7 @@ import '../services/question_page_settings_store.dart';
 import '../services/ticket_test_progress_store.dart';
 import '../utils/friendly_error_message.dart';
 import '../widgets/question_explanation_footer.dart';
+import '../widgets/question_network_image.dart';
 import '../widgets/question_swipe_detector.dart';
 
 class TicketTestPage extends StatefulWidget {
@@ -35,6 +36,7 @@ class TicketTestPage extends StatefulWidget {
 }
 
 class _TicketTestPageState extends State<TicketTestPage> {
+  final QuestionImagePreloader _imagePreloader = QuestionImagePreloader();
   late Future<List<TopicQuestion>> _questionsFuture;
   final List<int?> _answers = <int?>[];
   TicketTestDraft? _savedDraft;
@@ -305,6 +307,11 @@ class _TicketTestPageState extends State<TicketTestPage> {
 
                 _loadedQuestions = questions;
                 final question = questions[_currentIndex];
+                _imagePreloader.run(
+                  context,
+                  questions.map((item) => item.image).toList(),
+                  _currentIndex,
+                );
                 final optionOrder = _currentOptionOrder.length == question.options.length
                     ? _currentOptionOrder
                     : List<int>.generate(question.options.length, (index) => index);
@@ -610,8 +617,10 @@ class _TicketTestPageState extends State<TicketTestPage> {
     );
   }
 
+  // Xom qiymat: QuestionNetworkImage o'zi ekran o'lchamiga mos variant (s/m/l) va kesh/zaxirani tanlaydi.
   String _questionImageUrl(TopicQuestion question) {
-    return resolveQuestionImageUrl(question.image);
+    final value = question.image.trim();
+    return value.isEmpty ? defaultQuestionImageAsset : value;
   }
 
   Widget _buildQuestionImage(TopicQuestion question) {
@@ -634,39 +643,7 @@ class _TicketTestPageState extends State<TicketTestPage> {
     return SizedBox(
       width: double.infinity,
       height: imageHeight,
-      child: Image.network(
-        imageUrl,
-        width: double.infinity,
-        height: imageHeight,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: double.infinity,
-            height: imageHeight,
-            color: AppColors.surfaceSoft,
-            alignment: Alignment.center,
-            child: SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: AppColors.primary,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Image.asset(
-            'assets/default.png',
-            width: double.infinity,
-            height: imageHeight,
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-          );
-        },
-      ),
+      child: QuestionNetworkImage(rawImage: imageUrl, width: double.infinity, height: imageHeight, fit: BoxFit.cover),
     );
   }
 
@@ -1063,26 +1040,15 @@ class _TicketTestPageState extends State<TicketTestPage> {
                     borderRadius: BorderRadius.circular(20),
                     child: isAsset
                         ? Image.asset(imageUrl, fit: BoxFit.contain)
-                        : Image.network(
-                            imageUrl,
+                        : QuestionNetworkImage(
+                            rawImage: imageUrl,
                             fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: SizedBox(
-                                  height: 34,
-                                  width: 34,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.6,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                                  'assets/default.png',
-                                  fit: BoxFit.contain,
-                                ),
+                            variant: ImageVariant.l,
+                            placeholderBuilder: (context) => QuestionNetworkImage(
+                              rawImage: imageUrl,
+                              fit: BoxFit.contain,
+                              variant: ImageVariant.m,
+                            ),
                           ),
                   ),
                 ),

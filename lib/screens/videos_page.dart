@@ -12,6 +12,7 @@ import '../l10n/app_strings.dart';
 import '../services/api_client.dart';
 import '../utils/friendly_error_message.dart';
 import 'topic_test_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 const Map<String, String> _videoRequestHeaders = <String, String>{
   'Referer': 'https://topshirdi.uz/',
@@ -455,10 +456,12 @@ class _VideoCardState extends State<_VideoCard> {
                             fit: StackFit.expand,
                             children: [
                               if (widget.video.videoThumbnail.isNotEmpty)
-                                Image.network(
-                                  widget.video.videoThumbnail,
+                                CachedNetworkImage(
+                                  imageUrl: widget.video.videoThumbnail,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  memCacheWidth: 720,
+                                  fadeInDuration: const Duration(milliseconds: 120),
+                                  errorWidget: (context, url, error) {
                                     return Container(
                                       color: AppColors.surfaceTint,
                                       alignment: Alignment.center,
