@@ -184,6 +184,10 @@ class AppStrings {
       'telegram_not_opened': 'Telegram ochilmadi',
       'write_admin': 'Telegram orqali adminga yozish',
       'password_reset_title': 'Parolni tiklash',
+      'login_register_hint': 'Kirishdan oldin ro‘yxatdan o‘tgan bo‘lishingiz kerak.',
+      'reset_bot_hint': 'Telegramda botni ochib «Start» ni bosing va raqamingizni ulashing. Bot sizga yangi parol beradi va ilova avtomatik kirib oladi.',
+      'reset_bot_note': 'Parolni tiklash uchun avval shu raqam bilan ro‘yxatdan o‘tgan bo‘lishingiz kerak.',
+      'reset_bot_button': 'Telegram orqali tiklash',
       'password_reset_help':
           'Agar parolingizni unutgan bo‘lsangiz, admin bilan Telegram orqali bog‘laning. Admin sizga vaqtinchalik parol beradi.',
       'password_reset_note':
@@ -398,6 +402,10 @@ class AppStrings {
       'telegram_not_opened': 'Telegram очилмади',
       'write_admin': 'Telegram орқали админга ёзиш',
       'password_reset_title': 'Паролни тиклаш',
+      'login_register_hint': 'Киришдан олдин рўйхатдан ўтган бўлишингиз керак.',
+      'reset_bot_hint': 'Telegramда ботни очиб «Start» ни босинг ва рақамингизни улашинг. Бот сизга янги парол беради ва илова автоматик кириб олади.',
+      'reset_bot_note': 'Паролни тиклаш учун аввал шу рақам билан рўйхатдан ўтган бўлишингиз керак.',
+      'reset_bot_button': 'Telegram орқали тиклаш',
       'password_reset_help':
           'Агар паролингизни унутган бўлсангиз, админ билан Telegram орқали боғланинг. Админ сизга вақтинчалик парол беради.',
       'password_reset_note':
@@ -614,6 +622,10 @@ class AppStrings {
       'telegram_not_opened': 'Telegram не открылся',
       'write_admin': 'Написать администратору в Telegram',
       'password_reset_title': 'Сброс пароля',
+      'login_register_hint': 'Перед входом нужно зарегистрироваться.',
+      'reset_bot_hint': 'Откройте бота в Telegram, нажмите «Start» и поделитесь номером. Бот выдаст новый пароль, и приложение войдёт автоматически.',
+      'reset_bot_note': 'Для восстановления пароля нужно сначала зарегистрироваться с этим номером.',
+      'reset_bot_button': 'Восстановить через Telegram',
       'password_reset_help':
           'Если вы забыли пароль, свяжитесь с администратором через Telegram. Вам выдадут временный пароль.',
       'password_reset_note':

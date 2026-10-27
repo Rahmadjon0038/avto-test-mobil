@@ -210,6 +210,20 @@ class ApiClient {
     return TelegramLoginStart(state: state, authUrl: authUrl, viaBot: viaBot);
   }
 
+  /// Parolni bot orqali tiklash: `t.me/BOT?start=r...` havolasini qaytaradi.
+  static Future<TelegramLoginStart> telegramStartPasswordReset() async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/auth/telegram/reset/start'),
+      headers: _jsonHeaders(),
+      body: '{}',
+    );
+    final body = _telegramBody(response, 'Parolni tiklash boshlanmadi');
+    final state = body['state']?.toString() ?? '';
+    final authUrl = body['authUrl']?.toString() ?? '';
+    if (state.isEmpty || authUrl.isEmpty) throw Exception('Noto‘g‘ri javob keldi');
+    return TelegramLoginStart(state: state, authUrl: authUrl, viaBot: true);
+  }
+
   /// Tasdiqlanmagan bo'lsa null; tasdiqlangan bo'lsa sessiya; eskirgan/bekor qilingan bo'lsa ApiException(410).
   static Future<AuthSession?> telegramLoginStatus(String state) async {
     final response = await http.get(

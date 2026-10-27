@@ -348,6 +348,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
 
   // --- Yangi bosh sahifa dizayni (Telegram orqali kirish asosiy) -----------------------------------
   static const _navy = Color(0xFF14213D);
+  static const _titleBlue = Color(0xFF3F6FEE);
 
   String get _languageLabel {
     switch (AppLanguageStore.currentCode) {
@@ -383,7 +384,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                 Text(
                   strings.t('tg_hero_sub'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _navy, height: 1.2),
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _titleBlue, height: 1.2),
                 ),
                 const SizedBox(height: 8),
                 // Kutish kartasi ekranda to'liq ko'rinishi uchun, kutish paytida rasm yashiriladi.
@@ -425,7 +426,16 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: const Text('Topshirdi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _navy)),
+          child: const Text(
+            'Topshirdi',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              fontStyle: FontStyle.italic,
+              letterSpacing: -0.3,
+              color: _titleBlue,
+            ),
+          ),
         ),
         InkWell(
           onTap: _openLanguageSheet,
