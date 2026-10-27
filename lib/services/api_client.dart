@@ -39,7 +39,18 @@ class TelegramLoginConfig {
 
   /// "Telegram orqali kirish" tugmasi: avval (bepul) bot, bo'lmasa Telegram OIDC.
   bool get telegramButton => botEnabled || loginEnabled;
-  bool get any => codeEnabled || telegramButton;
+
+  /// Telefon raqam + kod formasi faqat bot yo'q bo'lganda (bot bo'lsa bitta tugma yetarli).
+  bool get showCodeForm => codeEnabled && !botEnabled;
+  bool get any => showCodeForm || telegramButton;
+
+  Map<String, dynamic> toJson() => {'codeEnabled': codeEnabled, 'loginEnabled': loginEnabled, 'botEnabled': botEnabled};
+
+  factory TelegramLoginConfig.fromJson(Map<String, dynamic> json) => TelegramLoginConfig(
+        codeEnabled: json['codeEnabled'] == true,
+        loginEnabled: json['loginEnabled'] == true,
+        botEnabled: json['botEnabled'] == true,
+      );
 }
 
 class TelegramLoginStart {

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_strings.dart';
@@ -66,13 +68,34 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    ApiClient.telegramLoginConfig().then((config) {
-      if (!mounted) return;
-      setState(() {
-        _config = config;
-        _configLoaded = true;
-      });
+    _loadConfig();
+  }
+
+  static const _configCacheKey = 'telegram_login_config';
+
+  // Oxirgi bilingan sozlamani darrov ko'rsatamiz (sekin internetda tugma kechikmasin), keyin serverdan yangilaymiz.
+  Future<void> _loadConfig() async {
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_configCacheKey);
+      if (cached != null && mounted && !_configLoaded) {
+        setState(() {
+          _config = TelegramLoginConfig.fromJson(Map<String, dynamic>.from(jsonDecode(cached) as Map));
+          _configLoaded = true;
+        });
+      }
+    } catch (_) {}
+    final fresh = await ApiClient.telegramLoginConfig();
+    if (!mounted) return;
+    setState(() {
+      _config = fresh;
+      _configLoaded = true;
     });
+    try {
+      // Tarmoq xatosida bo'sh sozlama qaytadi: u bilan eski yaxshi sozlamani o'chirib yubormaymiz.
+      if (fresh.any) await prefs?.setString(_configCacheKey, jsonEncode(fresh.toJson()));
+    } catch (_) {}
   }
 
   @override
@@ -260,7 +283,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final telegramAvailable = _config.any;
-    final onlyTelegramButton = _configLoaded && !_config.codeEnabled && _config.telegramButton;
+    final onlyTelegramButton = _configLoaded && !_config.showCodeForm && _config.telegramButton;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
@@ -299,9 +322,14 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               if (_waitingTelegram)
                 _buildWaitingCard(strings)
               else ...[
-                if (_config.codeEnabled || !_configLoaded) _buildCodeForm(strings),
+                if (!_configLoaded)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3))),
+                  ),
+                if (_config.showCodeForm) _buildCodeForm(strings),
                 if (_config.telegramButton) ...[
-                  if (_config.codeEnabled) _buildDivider(strings),
+                  if (_config.showCodeForm) _buildDivider(strings),
                   _buildTelegramButton(strings),
                 ],
               ],
