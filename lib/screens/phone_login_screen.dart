@@ -283,7 +283,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final telegramAvailable = _config.any;
-    final onlyTelegramButton = _configLoaded && !_config.showCodeForm && _config.telegramButton;
+    // Telegram (bot) yoqilgan bo'lsa yangi bosh sahifa dizayni; telefon+kod formasi kerak bo'lsa avvalgi ko'rinish.
+    if (!_configLoaded || (_config.telegramButton && !_config.showCodeForm)) return _buildModern(strings);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
@@ -306,17 +307,13 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               ),
               const SizedBox(height: 28),
               Text(
-                onlyTelegramButton ? strings.t('tg_title_login') : strings.t('tg_title'),
+                strings.t('tg_title'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _text, height: 1.2),
               ),
               const SizedBox(height: 8),
               Text(
-                !telegramAvailable && _configLoaded
-                    ? strings.t('tg_unavailable')
-                    : onlyTelegramButton
-                        ? strings.t('tg_subtitle_login')
-                        : strings.t('tg_subtitle'),
+                telegramAvailable ? strings.t('tg_subtitle') : strings.t('tg_unavailable'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 15, color: _muted, height: 1.4),
               ),
@@ -324,11 +321,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               if (_waitingTelegram)
                 _buildWaitingCard(strings)
               else ...[
-                if (!_configLoaded)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3))),
-                  ),
                 if (_config.showCodeForm) _buildCodeForm(strings),
                 if (_config.telegramButton) ...[
                   if (_config.showCodeForm) _buildDivider(strings),
@@ -347,6 +339,226 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _primary),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Yangi bosh sahifa dizayni (Telegram orqali kirish asosiy) -----------------------------------
+  static const _navy = Color(0xFF14213D);
+  static const _accent = Color(0xFF2F6BEA);
+
+  String get _languageLabel {
+    switch (AppLanguageStore.currentCode) {
+      case AppLanguageStore.uzCyrl:
+        return 'ЎЗ';
+      case 'ru':
+        return 'RU';
+      default:
+        return 'UZ';
+    }
+  }
+
+  Widget _buildModern(AppStrings strings) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF1F6FF), Colors.white],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildModernHeader(strings),
+                const SizedBox(height: 18),
+                Center(child: _buildAudienceChip(strings)),
+                const SizedBox(height: 16),
+                Text.rich(
+                  TextSpan(
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: _navy, height: 1.18),
+                    children: [
+                      TextSpan(text: '${strings.t('tg_hero_title')}\n'),
+                      TextSpan(text: strings.t('tg_hero_accent'), style: const TextStyle(color: _accent)),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  strings.t('tg_hero_sub'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, color: _muted, height: 1.45),
+                ),
+                const SizedBox(height: 8),
+                // Kutish kartasi ekranda to'liq ko'rinishi uchun, kutish paytida rasm yashiriladi.
+                if (!_waitingTelegram) const _HeroIllustration() else const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                if (_waitingTelegram)
+                  _buildWaitingCard(strings)
+                else if (!_configLoaded)
+                  const SizedBox(height: 58, child: Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3))))
+                else
+                  _buildModernTelegramButton(strings),
+                if (_error != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: _danger, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+                _buildDivider(strings),
+                _buildModernOtherMethod(strings),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernHeader(AppStrings strings) {
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: const Color(0xFFE6EFFF), borderRadius: BorderRadius.circular(14)),
+          child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Topshirdi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _navy, height: 1.1)),
+              const SizedBox(height: 2),
+              Text(strings.t('tg_tagline'), style: const TextStyle(fontSize: 12.5, color: _muted)),
+            ],
+          ),
+        ),
+        InkWell(
+          onTap: _openLanguageSheet,
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFE1E8F5)),
+              boxShadow: const [BoxShadow(color: Color(0x0F1B2B52), blurRadius: 10, offset: Offset(0, 3))],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.language_rounded, size: 18, color: _navy),
+                const SizedBox(width: 6),
+                Text(_languageLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _navy)),
+                const SizedBox(width: 2),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: _muted),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAudienceChip(AppStrings strings) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(color: const Color(0xFFE6EFFF), borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.school_rounded, size: 18, color: _accent),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              strings.t('tg_chip'),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _accent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernTelegramButton(AppStrings strings) {
+    return Opacity(
+      opacity: _busy ? 0.7 : 1,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: const [BoxShadow(color: Color(0x4D2F63E6), blurRadius: 18, offset: Offset(0, 8))],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+          clipBehavior: Clip.antiAlias,
+          child: Ink(
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              gradient: const LinearGradient(colors: [Color(0xFF3F86F5), Color(0xFF2F63E6)]),
+            ),
+            child: InkWell(
+              onTap: _busy ? null : _loginWithTelegram,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                child: Row(
+                  children: [
+                    const Icon(Icons.send_rounded, size: 24, color: Colors.white),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        strings.t('tg_login_telegram'),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, size: 28, color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernOtherMethod(AppStrings strings) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _busy ? null : widget.onOtherMethod,
+        borderRadius: BorderRadius.circular(28),
+        child: Ink(
+          height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFFDCE5F3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.mail_outline_rounded, size: 20, color: _navy),
+              const SizedBox(width: 10),
+              Text(strings.t('tg_other_method'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: _navy)),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded, size: 22, color: _muted),
             ],
           ),
         ),
@@ -498,6 +710,159 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
         child: _busy
             ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
             : Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+
+/// Bosh sahifadagi rasm: vidjetlardan yig'ilgan (alohida rasm fayli kerak emas, tarmoqdan yuklanmaydi).
+class _HeroIllustration extends StatelessWidget {
+  const _HeroIllustration();
+
+  static const _line = Color(0xFFD7E1F4);
+  static const _lineSoft = Color(0xFFE9EFFA);
+  static const _blue = Color(0xFF3F86F5);
+
+  Widget _row(bool checked) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: checked ? _blue : Colors.white,
+              border: Border.all(color: checked ? _blue : const Color(0xFFC5D3EE), width: 2),
+            ),
+            child: checked ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 8, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(4))),
+                const SizedBox(height: 6),
+                FractionallySizedBox(
+                  widthFactor: 0.7,
+                  child: Container(height: 6, decoration: BoxDecoration(color: _lineSoft, borderRadius: BorderRadius.circular(3))),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const shadow = [BoxShadow(color: Color(0x261B3C8C), blurRadius: 22, offset: Offset(0, 10))];
+    return SizedBox(
+      height: 260,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 30,
+            child: Container(
+              width: 300,
+              height: 210,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(110),
+                gradient: const LinearGradient(colors: [Color(0xFFE3EEFF), Color(0xFFD3E3FF)]),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 14,
+            child: Container(
+              width: 210,
+              height: 54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(colors: [Color(0xFF8FB5F5), Color(0xFF6D9BEF)]),
+                boxShadow: shadow,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            child: Container(
+              width: 196,
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: shadow),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 70, height: 9, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(5))),
+                  _row(true),
+                  _row(false),
+                  _row(false),
+                  _row(false),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(top: 0, right: 40, child: Icon(Icons.school_rounded, size: 92, color: Color(0xFF1B2B52))),
+          Positioned(
+            right: 26,
+            bottom: 36,
+            child: Container(
+              width: 82,
+              height: 82,
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: shadow),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final h in const [18.0, 30.0, 46.0])
+                    Container(
+                      width: 11,
+                      height: h,
+                      decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(4)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 22,
+            top: 92,
+            child: Transform.rotate(
+              angle: -0.1,
+              child: Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF63B8F7), Color(0xFF3A86EA)],
+                  ),
+                  boxShadow: shadow,
+                ),
+                child: const Icon(Icons.send_rounded, size: 40, color: Colors.white),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 52,
+            top: 34,
+            child: Transform.rotate(angle: -0.6, child: Container(width: 3.5, height: 20, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(2)))),
+          ),
+          Positioned(
+            left: 76,
+            top: 22,
+            child: Transform.rotate(angle: -0.25, child: Container(width: 3.5, height: 24, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(2)))),
+          ),
+        ],
       ),
     );
   }
