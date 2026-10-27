@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
@@ -7,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_colors.dart';
-import '../models/auth_session.dart';
 import 'privacy_policy_page.dart';
 import '../services/api_client.dart';
 import '../l10n/app_strings.dart';
@@ -137,44 +135,6 @@ class _AuthPageState extends State<AuthPage> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
     );
-  }
-
-  // "Parolni unutdingizmi?": bot yoqilgan bo'lsa botga o'tadi (yangi parol beradi va avtomatik kiritadi),
-  // bo'lmasa avvalgi "adminga yozish" oynasi ochiladi.
-  Future<void> _startPasswordReset() async {
-    final strings = AppStrings.of(context);
-    setState(() => _loading = true);
-    TelegramLoginStart? start;
-    try {
-      final config = await ApiClient.telegramLoginConfig();
-      if (config.botEnabled) start = await ApiClient.telegramStartPasswordReset();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-    if (!mounted) return;
-    if (start == null) {
-      if (_error == null) await _openForgotPasswordDialog();
-      return;
-    }
-    final opened = await launchUrl(
-      Uri.parse(start.authUrl),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!mounted) return;
-    if (!opened) {
-      setState(() => _error = strings.t('tg_open_failed'));
-      return;
-    }
-    final session = await showDialog<AuthSession>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _ResetViaTelegramDialog(start: start!),
-    );
-    if (session != null && mounted) Navigator.of(context).pop(session);
   }
 
   Future<void> _openForgotPasswordDialog() async {
@@ -492,7 +452,7 @@ class _AuthPageState extends State<AuthPage> {
                                 child: TextButton(
                                   onPressed: _loading
                                       ? null
-                                      : _startPasswordReset,
+                                      : _openForgotPasswordDialog,
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppColors.primary,
                                     padding: const EdgeInsets.symmetric(
@@ -913,188 +873,6 @@ class _RoundedField extends StatelessWidget {
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: AppColors.danger, width: 1.4),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Parolni unutdingizmi?" — bot orqali tiklash kutish oynasi: bot yangi parol bergach ilova avtomatik kiradi.
-class _ResetViaTelegramDialog extends StatefulWidget {
-  const _ResetViaTelegramDialog({required this.start});
-
-  final TelegramLoginStart start;
-
-  @override
-  State<_ResetViaTelegramDialog> createState() => _ResetViaTelegramDialogState();
-}
-
-class _ResetViaTelegramDialogState extends State<_ResetViaTelegramDialog>
-    with WidgetsBindingObserver {
-  Timer? _timer;
-  final DateTime _deadline = DateTime.now().add(const Duration(minutes: 5));
-  bool _inFlight = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _poll());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Telegramdan ilovaga qaytganda natijani darrov so'raymiz.
-    if (state == AppLifecycleState.resumed) _poll();
-  }
-
-  Future<void> _poll() async {
-    if (_inFlight || _error != null) return;
-    if (DateTime.now().isAfter(_deadline)) {
-      _timer?.cancel();
-      if (mounted) setState(() => _error = AppStrings.of(context).t('tg_open_failed'));
-      return;
-    }
-    _inFlight = true;
-    try {
-      final session = await ApiClient.telegramLoginStatus(widget.start.state);
-      if (!mounted) return;
-      if (session != null) {
-        _timer?.cancel();
-        Navigator.of(context).pop(session);
-      }
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      if (e.statusCode == 410 || e.statusCode == 403 || e.statusCode == 400) {
-        _timer?.cancel();
-        setState(() => _error = e.message);
-      }
-    } catch (_) {
-      // Tarmoq xatosi: keyingi urinishda qayta so'raymiz.
-    } finally {
-      _inFlight = false;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18),
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _authSurface,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: const [
-            BoxShadow(color: Color(0x26000000), blurRadius: 30, offset: Offset(0, 16)),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: _authSurfaceTint,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.lock_reset_rounded, color: _authPrimary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    strings.t('password_reset_title'),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.text,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_error == null) ...[
-              const Center(
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF229ED9)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                strings.t('reset_bot_hint'),
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.text),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFB7D2FF)),
-                ),
-                child: Text(
-                  strings.t('reset_bot_note'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: Color(0xFF2450A6),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 50,
-                child: FilledButton.icon(
-                  onPressed: () => launchUrl(
-                    Uri.parse(widget.start.authUrl),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  icon: const Icon(Icons.send_rounded),
-                  label: Text(strings.t('tg_reopen')),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF229ED9),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  ),
-                ),
-              ),
-            ] else
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  height: 1.45,
-                  color: Color(0xFFD92D20),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            const SizedBox(height: 4),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(_error == null ? strings.t('tg_cancel') : strings.t('cancel')),
-            ),
-          ],
         ),
       ),
     );

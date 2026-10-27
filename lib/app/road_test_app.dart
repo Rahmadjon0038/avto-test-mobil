@@ -124,6 +124,10 @@ class _TopshirdiAppState extends State<TopshirdiApp>
 
       if (stored.refreshToken != null && stored.refreshToken!.isNotEmpty) {
         active = await ApiClient.refresh(stored.refreshToken!);
+        // Yangi tokenlarni DARROV saqlaymiz: keyingi so'rov (me) tarmoq xatosidan yiqilsa ham yangi
+        // yangilash tokeni yo'qolmasin, aks holda keyingi ochilishda foydalanuvchi tizimdan chiqib qoladi.
+        active = active.copyWith(user: stored.user);
+        await _saveSession(active);
         final me = await ApiClient.me(active.accessToken);
         active = active.copyWith(user: me.user);
       } else {
