@@ -348,7 +348,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
 
   // --- Yangi bosh sahifa dizayni (Telegram orqali kirish asosiy) -----------------------------------
   static const _navy = Color(0xFF14213D);
-  static const _accent = Color(0xFF2F6BEA);
 
   String get _languageLabel {
     switch (AppLanguageStore.currentCode) {
@@ -380,20 +379,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildModernHeader(strings),
-                const SizedBox(height: 18),
-                Center(child: _buildAudienceChip(strings)),
-                const SizedBox(height: 16),
-                Text.rich(
-                  TextSpan(
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: _navy, height: 1.18),
-                    children: [
-                      TextSpan(text: '${strings.t('tg_hero_title')}\n'),
-                      TextSpan(text: strings.t('tg_hero_accent'), style: const TextStyle(color: _accent)),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 22),
                 Text(
                   strings.t('tg_hero_sub'),
                   textAlign: TextAlign.center,
@@ -439,14 +425,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Topshirdi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _navy, height: 1.1)),
-              const SizedBox(height: 2),
-              Text(strings.t('tg_tagline'), style: const TextStyle(fontSize: 12.5, color: _muted)),
-            ],
-          ),
+          child: const Text('Topshirdi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _navy)),
         ),
         InkWell(
           onTap: _openLanguageSheet,
@@ -472,26 +451,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAudienceChip(AppStrings strings) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(color: const Color(0xFFE6EFFF), borderRadius: BorderRadius.circular(22)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.school_rounded, size: 18, color: _accent),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              strings.t('tg_chip'),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _accent),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
