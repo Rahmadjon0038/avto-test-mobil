@@ -14,7 +14,7 @@ import '../models/auth_session.dart';
 import '../screens/auth_page.dart';
 import '../screens/home_screen.dart';
 import '../screens/language_selection_page.dart';
-import '../screens/landing_screen.dart';
+import '../screens/phone_login_screen.dart';
 import '../screens/splash_screen.dart';
 import '../services/api_client.dart';
 import '../services/bootstrap_store.dart';
@@ -553,9 +553,9 @@ class _TopshirdiAppState extends State<TopshirdiApp>
                 },
               )
             : _session == null
-            ? LandingScreen(
-                onLogin: () => _openAuthPage(AuthMode.login),
-                onRegister: () => _openAuthPage(AuthMode.register),
+            ? PhoneLoginScreen(
+                onAuthenticated: _handleAuthSuccess,
+                onOtherMethod: () => _openAuthPage(AuthMode.login),
                 onLanguageChanged: _setLanguage,
               )
             : HomeScreen(

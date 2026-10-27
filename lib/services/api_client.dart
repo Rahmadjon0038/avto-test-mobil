@@ -26,23 +26,19 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-class TelegramCodeRequest {
-  const TelegramCodeRequest({
-    required this.sent,
-    required this.needsTelegram,
-    this.botUrl,
-  });
+class TelegramLoginConfig {
+  const TelegramLoginConfig({this.codeEnabled = false, this.loginEnabled = false});
 
-  final bool sent;
-  final bool needsTelegram;
-  final String? botUrl;
+  final bool codeEnabled;
+  final bool loginEnabled;
+  bool get any => codeEnabled || loginEnabled;
 }
 
 class TelegramLoginStart {
-  const TelegramLoginStart({required this.token, required this.botUrl});
+  const TelegramLoginStart({required this.state, required this.authUrl});
 
-  final String token;
-  final String botUrl;
+  final String state;
+  final String authUrl;
 }
 
 class ApiClient {
@@ -139,32 +135,31 @@ class ApiClient {
     );
   }
 
-  /// Server Telegram botini sozlaganmi (sozlanmagan yoki eski server bo'lsa — false).
-  static Future<bool> telegramLoginEnabled() async {
+  /// Server qaysi Telegram usullarini sozlagan (eski server yoki xato bo'lsa ikkalasi ham false).
+  static Future<TelegramLoginConfig> telegramLoginConfig() async {
     try {
       final response = await http
           .get(Uri.parse('$apiBaseUrl/api/auth/telegram/config'))
           .timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) return false;
-      return _decodeBody(response)['enabled'] == true;
+      if (response.statusCode != 200) return const TelegramLoginConfig();
+      final body = _decodeBody(response);
+      return TelegramLoginConfig(
+        codeEnabled: body['codeEnabled'] == true,
+        loginEnabled: body['loginEnabled'] == true,
+      );
     } catch (_) {
-      return false;
+      return const TelegramLoginConfig();
     }
   }
 
-  /// Telefon raqamga kod so'raydi. Raqam hali botga ulanmagan bo'lsa `needsTelegram` va bot havolasi qaytadi.
-  static Future<TelegramCodeRequest> telegramRequestCode(String phone) async {
+  /// Telefon raqamga Telegramning rasmiy tasdiqlash xabari orqali kod yuboradi.
+  static Future<void> telegramRequestCode(String phone) async {
     final response = await http.post(
       Uri.parse('$apiBaseUrl/api/auth/telegram/request-code'),
       headers: _jsonHeaders(),
       body: jsonEncode({'phone': phone}),
     );
-    final body = _telegramBody(response, 'Kod yuborilmadi');
-    return TelegramCodeRequest(
-      sent: body['sent'] == true,
-      needsTelegram: body['needsTelegram'] == true,
-      botUrl: body['botUrl']?.toString(),
-    );
+    _telegramBody(response, 'Kod yuborilmadi');
   }
 
   static Future<AuthSession> telegramVerifyCode({
@@ -180,24 +175,25 @@ class ApiClient {
     return _sessionFromAuthResponse(response, body);
   }
 
-  /// "Telegram orqali kirish": bir martalik token va bot havolasi.
+  /// "Telegram orqali kirish": Telegram OIDC havolasi va natijani so'rash uchun `state`.
   static Future<TelegramLoginStart> telegramStartLogin() async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/auth/telegram/start'),
+      Uri.parse('$apiBaseUrl/api/auth/telegram/oidc/start'),
       headers: _jsonHeaders(),
       body: '{}',
     );
     final body = _telegramBody(response, 'Telegram orqali kirish boshlanmadi');
-    final token = body['token']?.toString() ?? '';
-    final botUrl = body['botUrl']?.toString() ?? '';
-    if (token.isEmpty || botUrl.isEmpty) throw Exception('Noto‘g‘ri javob keldi');
-    return TelegramLoginStart(token: token, botUrl: botUrl);
+    final state = body['state']?.toString() ?? '';
+    final authUrl = body['authUrl']?.toString() ?? '';
+    if (state.isEmpty || authUrl.isEmpty) throw Exception('Noto‘g‘ri javob keldi');
+    return TelegramLoginStart(state: state, authUrl: authUrl);
   }
 
   /// Tasdiqlanmagan bo'lsa null; tasdiqlangan bo'lsa sessiya; eskirgan/bekor qilingan bo'lsa ApiException(410).
-  static Future<AuthSession?> telegramLoginStatus(String token) async {
+  static Future<AuthSession?> telegramLoginStatus(String state) async {
     final response = await http.get(
-      Uri.parse('$apiBaseUrl/api/auth/telegram/status').replace(queryParameters: {'token': token}),
+      Uri.parse('$apiBaseUrl/api/auth/telegram/oidc/status')
+          .replace(queryParameters: {'state': state}),
       headers: _jsonHeaders(),
     );
     final body = _telegramBody(response, 'Tekshirib bo‘lmadi');
