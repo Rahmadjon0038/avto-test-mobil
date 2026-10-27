@@ -567,6 +567,7 @@ class _TopshirdiAppState extends State<TopshirdiApp>
                 themeMode: _themeMode,
                 onThemeModeChanged: _setThemeMode,
                 onLanguageChanged: _setLanguage,
+                showVideoLessons: _appConfig?.videoLessonsEnabled ?? true,
               ),
       ),
     );

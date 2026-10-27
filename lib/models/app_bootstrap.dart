@@ -53,6 +53,7 @@ class AppBootstrapConfig {
     required this.audioPremiumRequired,
     required this.videoPremiumRequired,
     required this.warning,
+    this.videoLessonsEnabled = true,
     this.updatedAt,
   });
 
@@ -68,6 +69,7 @@ class AppBootstrapConfig {
   final bool audioOfflineCache;
   final bool audioPremiumRequired;
   final bool videoPremiumRequired;
+  final bool videoLessonsEnabled;
   final AppWarningText warning;
   final String? updatedAt;
 
@@ -93,6 +95,7 @@ class AppBootstrapConfig {
       audioOfflineCache: json['audioOfflineCache'] != false,
       audioPremiumRequired: json['audioPremiumRequired'] == true,
       videoPremiumRequired: json['videoPremiumRequired'] == true,
+      videoLessonsEnabled: json['videoLessonsEnabled'] != false,
       warning: AppWarningText.fromJson(
         Map<String, dynamic>.from((json['warning'] ?? const {}) as Map),
       ),
@@ -122,6 +125,7 @@ class AppBootstrapConfig {
         'audioOfflineCache': audioOfflineCache,
         'audioPremiumRequired': audioPremiumRequired,
         'videoPremiumRequired': videoPremiumRequired,
+        'videoLessonsEnabled': videoLessonsEnabled,
         'warning': warning.toJson(),
         'updatedAt': updatedAt,
       };

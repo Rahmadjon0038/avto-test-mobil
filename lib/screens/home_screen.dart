@@ -29,6 +29,7 @@ class HomeScreen extends StatelessWidget {
     required this.themeMode,
     required this.onThemeModeChanged,
     required this.onLanguageChanged,
+    this.showVideoLessons = true,
   });
 
   final AuthSession session;
@@ -39,6 +40,7 @@ class HomeScreen extends StatelessWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final ValueChanged<String> onLanguageChanged;
+  final bool showVideoLessons;
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +214,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (showVideoLessons) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
@@ -316,6 +319,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                ],
                 Column(
                   children: [
                     _SectionCard(
