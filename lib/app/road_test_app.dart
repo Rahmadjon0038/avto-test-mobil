@@ -462,6 +462,9 @@ class _TopshirdiAppState extends State<TopshirdiApp>
 
   Future<void> _logout() async {
     final current = _session;
+    // Profil oynasi hozirgina yopilgan bo'lishi mumkin: uning yopilish animatsiyasi tugaguncha kutamiz, aks
+    // holda oyna hali ekranda turganda bosh ekran almashadi (debug rejimda "_dependents.isEmpty" xatosi).
+    await Future<void>.delayed(const Duration(milliseconds: 400));
     // Avval qurilmada chiqamiz: internet sekin yoki yo'q bo'lsa ham kirish sahifasi
     // darhol ochilsin. Serverga xabar fonda yuboriladi, xato bo'lsa e'tiborga olinmaydi.
     _passwordChangePromptShown = false;
