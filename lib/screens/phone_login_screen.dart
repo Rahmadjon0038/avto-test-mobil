@@ -533,8 +533,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                 const Icon(Icons.language_rounded, size: 19, color: _navy),
                 const SizedBox(width: 7),
                 Text(_languageLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _navy)),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF7A829C)),
+                const SizedBox(width: 3),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: Color(0xFF7A829C)),
               ],
             ),
           ),
@@ -835,10 +835,15 @@ class _LicenseCard extends StatelessWidget {
                 Positioned(
                   left: 22,
                   top: 74,
-                  child: Container(
-                    width: 70,
-                    height: 92,
-                    decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(12)),
+                  // Guvohnomadagi surat o'rni: avatar (assets/avatar.png).
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 70,
+                      height: 92,
+                      color: Colors.white,
+                      child: Image.asset('assets/avatar.png', fit: BoxFit.cover),
+                    ),
                   ),
                 ),
                 Positioned(
