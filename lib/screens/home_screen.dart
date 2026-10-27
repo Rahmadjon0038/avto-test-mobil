@@ -448,12 +448,18 @@ class HomeScreen extends StatelessWidget {
       }
     }
 
+    final nameController = TextEditingController(
+      text: (session.user['full_name'] ?? '').toString().trim(),
+    );
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
         bool actionLoading = false;
+        bool nameSaving = false;
+        String savedName = nameController.text;
 
         Future<bool> confirmDeleteAccount() async {
           final result = await showDialog<bool>(
@@ -518,7 +524,47 @@ class HomeScreen extends StatelessWidget {
                 }
               }
 
-              return Container(
+              Future<void> saveName() async {
+                if (nameSaving) return;
+                FocusScope.of(sheetContext).unfocus();
+                setSheetState(() => nameSaving = true);
+                try {
+                  final user = await ApiClient.updateProfileName(
+                    accessToken: session.accessToken,
+                    fullName: nameController.text.trim(),
+                  );
+                  onSessionUpdated(
+                    session.copyWith(user: {...session.user, ...user}),
+                  );
+                  savedName = (user['full_name'] ?? '').toString().trim();
+                  nameController.text = savedName;
+                  if (sheetContext.mounted) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      SnackBar(content: Text(strings.t('profile_name_saved'))),
+                    );
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
+                      ),
+                    );
+                  }
+                } finally {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => nameSaving = false);
+                  }
+                }
+              }
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+                ),
+                child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
                 decoration: BoxDecoration(
@@ -570,7 +616,11 @@ class HomeScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                strings.t('profile'),
+                                savedName.isNotEmpty
+                                    ? savedName
+                                    : strings.t('default_user_name'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -579,9 +629,7 @@ class HomeScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                phone.isNotEmpty
-                                    ? phone
-                                    : strings.t('phone_not_found'),
+                                phone.isNotEmpty ? phone : strings.t('profile'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textMuted,
@@ -593,6 +641,58 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 18),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: nameController,
+                            maxLength: 40,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => saveName(),
+                            style: TextStyle(color: AppColors.text),
+                            decoration: InputDecoration(
+                              labelText: strings.t('profile_name_label'),
+                              hintText: strings.t('default_user_name'),
+                              counterText: '',
+                              filled: true,
+                              fillColor: AppColors.surfaceTint,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 52,
+                          child: FilledButton(
+                            onPressed: nameSaving ? null : saveName,
+                            style: FilledButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: nameSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Text(strings.t('save')),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Parolsiz (Telegram orqali kirgan) foydalanuvchilarda parolni almashtirish yo'q.
+                    if (session.user['has_password'] != false) ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -610,6 +710,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    ],
                     SizedBox(
                       width: double.infinity,
                       height: 44,
@@ -681,12 +782,13 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                ),
               );
             },
           ),
         );
       },
-    );
+    ).whenComplete(nameController.dispose);
   }
 
   void _openLanguageSheet(BuildContext context) {

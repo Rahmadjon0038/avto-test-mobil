@@ -383,7 +383,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                 Text(
                   strings.t('tg_hero_sub'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: _muted, height: 1.45),
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _navy, height: 1.2),
                 ),
                 const SizedBox(height: 8),
                 // Kutish kartasi ekranda to'liq ko'rinishi uchun, kutish paytida rasm yashiriladi.

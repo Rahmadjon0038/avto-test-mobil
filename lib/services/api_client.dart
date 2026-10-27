@@ -269,6 +269,23 @@ class ApiClient {
     }
   }
 
+  /// Foydalanuvchi o'z ismini saqlaydi (bo'sh yuborilsa ism o'chadi). Yangilangan user obyektini qaytaradi.
+  static Future<Map<String, dynamic>> updateProfileName({
+    required String accessToken,
+    required String fullName,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$apiBaseUrl/api/me'),
+      headers: _jsonHeaders(accessToken: accessToken),
+      body: jsonEncode({'fullName': fullName}),
+    );
+    final body = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(body['error']?.toString() ?? 'Ismni saqlab bo‘lmadi');
+    }
+    return Map<String, dynamic>.from((body['user'] ?? const {}) as Map);
+  }
+
   static Future<AuthSession> refresh(String refreshToken) async {
     final response = await http.post(
       Uri.parse('$apiBaseUrl/api/auth/refresh'),

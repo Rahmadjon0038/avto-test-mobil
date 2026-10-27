@@ -169,26 +169,24 @@ String _fallbackHtml() {
     <div class="hero">
       <h1>Maxfiylik siyosati</h1>
       <p>Topshirdi foydalanuvchi ma'lumotlarini qanday yig'ishi, ishlatishi va himoya qilishini tushuntiradi.</p>
-      <div class="pill">Oxirgi yangilanish: 2026-06-14</div>
+      <div class="pill">Oxirgi yangilanish: 2026-10-27</div>
     </div>
 
     <div class="card">
       <h2>1. Yig'iladigan ma'lumotlar</h2>
-      <p>Topshirdi quyidagi ma'lumotlarni yig'ishi mumkin:</p>
       <ul>
-        <li>Ism</li>
-        <li>Email manzil</li>
-        <li>Kirish ma'lumotlari</li>
-        <li>O'rganish jarayoni va progress</li>
-        <li>Test natijalari va imtihon statistikasi</li>
-        <li>Ilova ishlashi uchun zarur qurilma ma'lumotlari</li>
+        <li>Telegram orqali kirsangiz: Telegram foydalanuvchi identifikatori (ID). Telefon raqamingiz, ismingiz va Telegramdagi boshqa ma'lumotlaringiz so'ralmaydi va saqlanmaydi.</li>
+        <li>Telefon raqam va parol bilan kirsangiz: telefon raqamingiz va parolingiz (parol faqat shifrlangan ko'rinishda saqlanadi).</li>
+        <li>Ism: ixtiyoriy. O'zingiz yozmasangiz, «Yo'lchivoy» nomi ko'rsatiladi.</li>
+        <li>O'qish va mashq qilish progressi, test natijalari, xatolar va imtihon statistikasi.</li>
+        <li>Xizmat ishlashi uchun zarur texnik ma'lumotlar: kirish sessiyasi va til sozlamasi. Server jurnallarida IP manzil va so'rov vaqti saqlanishi mumkin.</li>
       </ul>
     </div>
 
     <div class="card">
       <h2>2. Ma'lumotlardan foydalanish</h2>
       <ul>
-        <li>Hisob yaratish va boshqarish</li>
+        <li>Sizni aniqlash va hisobingizga kirishni ta'minlash</li>
         <li>Progressni saqlash</li>
         <li>Statistika ko'rsatish</li>
         <li>Platforma sifatini yaxshilash</li>
@@ -199,20 +197,21 @@ String _fallbackHtml() {
     <div class="card">
       <h2>3. Ma'lumot ulashish</h2>
       <p>Topshirdi foydalanuvchi ma'lumotlarini sotmaydi.</p>
-      <p>Ma'lumotlar qonun talab qilgan holatlardan tashqari uchinchi tomonlarga berilmaydi.</p>
+      <p>Telegram orqali kirish Telegram xizmati orqali amalga oshadi va Telegramning o'z maxfiylik siyosatiga bo'ysunadi. Rasm va fayllarni yetkazish uchun Cloudflare xizmatlaridan foydalaniladi. Boshqa hollarda ma'lumotlar faqat qonun talab qilganda ulashilishi mumkin.</p>
     </div>
 
     <div class="card">
       <h2>4. Xavfsizlik</h2>
-      <p>Topshirdi foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
+      <p>Parollar shifrlangan holda saqlanadi. Topshirdi foydalanuvchi ma'lumotlarini himoya qilish uchun oqilona texnik choralarni qo'llaydi.</p>
     </div>
 
     <div class="card">
       <h2>5. Foydalanuvchi huquqlari</h2>
       <ul>
-        <li>Hisobni o'chirishni so'rash</li>
-        <li>Ma'lumotlarni tuzatishni so'rash</li>
-        <li>Qo'llab-quvvatlashga murojaat qilish</li>
+        <li>Profil bo'limida ismingizni o'zgartirish yoki o'chirish</li>
+        <li>Profil bo'limidan hisobingizni o'chirish (hisob o'chirilganda unga bog'liq ma'lumotlar ham o'chadi)</li>
+        <li>Ma'lumotlarni tuzatish yoki o'chirishni so'rash</li>
+        <li>Support bilan Telegram orqali bog'lanish</li>
       </ul>
     </div>
 
@@ -223,12 +222,12 @@ String _fallbackHtml() {
 
     <div class="card">
       <h2>7. Siyosat o'zgarishlari</h2>
-      <p>Topshirdi ushbu maxfiylik siyosatini kelajakda yangilashi mumkin.</p>
+      <p>Topshirdi ushbu maxfiylik siyosatini kelajakda yangilashi mumkin. Yangilangan versiya shu sahifada e'lon qilinadi.</p>
     </div>
 
     <div class="card footer">
       <h2>Aloqa</h2>
-      <p><a href="mailto:support@topshirdi.uz">support@topshirdi.uz</a></p>
+      <p>Telegram: <a href="https://t.me/Rahmadjonn">@Rahmadjonn</a></p>
       <p><a href="https://topshirdi.uz">https://topshirdi.uz</a></p>
       <p class="muted">Agar asosiy sahifa javob bermasa, ushbu ichki variant ko'rsatiladi.</p>
     </div>
