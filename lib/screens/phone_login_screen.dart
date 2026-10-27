@@ -373,40 +373,42 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildModernHeader(strings),
-                const SizedBox(height: 22),
-                Text(
-                  strings.t('tg_hero_sub'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _titleBlue, height: 1.2),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 34),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildModernHeader(strings),
+                    const SizedBox(height: 56),
+                    Text(
+                      strings.t('tg_hero_sub'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _titleBlue, height: 1.2),
+                    ),
+                    const SizedBox(height: 28),
+                    if (_waitingTelegram)
+                      _buildWaitingCard(strings)
+                    else if (!_configLoaded)
+                      const SizedBox(height: 48, child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3))))
+                    else
+                      _buildModernTelegramButton(strings),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: _danger, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                    _buildDivider(strings),
+                    _buildModernOtherMethod(strings),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                // Kutish kartasi ekranda to'liq ko'rinishi uchun, kutish paytida rasm yashiriladi.
-                if (!_waitingTelegram) const _HeroIllustration() else const SizedBox(height: 12),
-                const SizedBox(height: 8),
-                if (_waitingTelegram)
-                  _buildWaitingCard(strings)
-                else if (!_configLoaded)
-                  const SizedBox(height: 58, child: Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3))))
-                else
-                  _buildModernTelegramButton(strings),
-                if (_error != null) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: _danger, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-                _buildDivider(strings),
-                _buildModernOtherMethod(strings),
-              ],
+              ),
             ),
           ),
         ),
@@ -469,36 +471,31 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
       opacity: _busy ? 0.7 : 1,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: const [BoxShadow(color: Color(0x4D2F63E6), blurRadius: 18, offset: Offset(0, 8))],
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [BoxShadow(color: Color(0x332F63E6), blurRadius: 12, offset: Offset(0, 5))],
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(24),
           clipBehavior: Clip.antiAlias,
           child: Ink(
-            height: 60,
+            height: 48,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(24),
               gradient: const LinearGradient(colors: [Color(0xFF3F86F5), Color(0xFF2F63E6)]),
             ),
             child: InkWell(
               onTap: _busy ? null : _loginWithTelegram,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 26),
-                child: Row(
-                  children: [
-                    const Icon(Icons.send_rounded, size: 24, color: Colors.white),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        strings.t('tg_login_telegram'),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, size: 28, color: Colors.white),
-                  ],
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.send_rounded, size: 19, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Text(
+                    strings.t('tg_login_telegram'),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                ],
               ),
             ),
           ),
@@ -512,22 +509,20 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
       color: Colors.transparent,
       child: InkWell(
         onTap: _busy ? null : widget.onOtherMethod,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
-          height: 56,
+          height: 44,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: const Color(0xFFDCE5F3)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.mail_outline_rounded, size: 20, color: _navy),
-              const SizedBox(width: 10),
-              Text(strings.t('tg_other_method'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: _navy)),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, size: 22, color: _muted),
+              const Icon(Icons.mail_outline_rounded, size: 18, color: _navy),
+              const SizedBox(width: 8),
+              Text(strings.t('tg_other_method'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _navy)),
             ],
           ),
         ),
@@ -679,159 +674,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
         child: _busy
             ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
             : Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-      ),
-    );
-  }
-}
-
-
-/// Bosh sahifadagi rasm: vidjetlardan yig'ilgan (alohida rasm fayli kerak emas, tarmoqdan yuklanmaydi).
-class _HeroIllustration extends StatelessWidget {
-  const _HeroIllustration();
-
-  static const _line = Color(0xFFD7E1F4);
-  static const _lineSoft = Color(0xFFE9EFFA);
-  static const _blue = Color(0xFF3F86F5);
-
-  Widget _row(bool checked) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: checked ? _blue : Colors.white,
-              border: Border.all(color: checked ? _blue : const Color(0xFFC5D3EE), width: 2),
-            ),
-            child: checked ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(height: 8, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(4))),
-                const SizedBox(height: 6),
-                FractionallySizedBox(
-                  widthFactor: 0.7,
-                  child: Container(height: 6, decoration: BoxDecoration(color: _lineSoft, borderRadius: BorderRadius.circular(3))),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const shadow = [BoxShadow(color: Color(0x261B3C8C), blurRadius: 22, offset: Offset(0, 10))];
-    return SizedBox(
-      height: 260,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 30,
-            child: Container(
-              width: 300,
-              height: 210,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(110),
-                gradient: const LinearGradient(colors: [Color(0xFFE3EEFF), Color(0xFFD3E3FF)]),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 14,
-            child: Container(
-              width: 210,
-              height: 54,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(colors: [Color(0xFF8FB5F5), Color(0xFF6D9BEF)]),
-                boxShadow: shadow,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 14,
-            child: Container(
-              width: 196,
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: shadow),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(width: 70, height: 9, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(5))),
-                  _row(true),
-                  _row(false),
-                  _row(false),
-                  _row(false),
-                ],
-              ),
-            ),
-          ),
-          const Positioned(top: 0, right: 40, child: Icon(Icons.school_rounded, size: 92, color: Color(0xFF1B2B52))),
-          Positioned(
-            right: 26,
-            bottom: 36,
-            child: Container(
-              width: 82,
-              height: 82,
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: shadow),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (final h in const [18.0, 30.0, 46.0])
-                    Container(
-                      width: 11,
-                      height: h,
-                      decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(4)),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 22,
-            top: 92,
-            child: Transform.rotate(
-              angle: -0.1,
-              child: Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF63B8F7), Color(0xFF3A86EA)],
-                  ),
-                  boxShadow: shadow,
-                ),
-                child: const Icon(Icons.send_rounded, size: 40, color: Colors.white),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 52,
-            top: 34,
-            child: Transform.rotate(angle: -0.6, child: Container(width: 3.5, height: 20, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(2)))),
-          ),
-          Positioned(
-            left: 76,
-            top: 22,
-            child: Transform.rotate(angle: -0.25, child: Container(width: 3.5, height: 24, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(2)))),
-          ),
-        ],
       ),
     );
   }
