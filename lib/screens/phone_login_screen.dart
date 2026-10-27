@@ -307,6 +307,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               const SizedBox(height: 28),
               Text(
                 onlyTelegramButton ? strings.t('tg_title_login') : strings.t('tg_title'),
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _text, height: 1.2),
               ),
               const SizedBox(height: 8),
@@ -316,6 +317,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                     : onlyTelegramButton
                         ? strings.t('tg_subtitle_login')
                         : strings.t('tg_subtitle'),
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 15, color: _muted, height: 1.4),
               ),
               const SizedBox(height: 22),
@@ -465,15 +467,20 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
           const SizedBox(height: 8),
           Text(strings.t(_tgViaBot ? 'tg_waiting_hint_bot' : 'tg_waiting_hint'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: _muted, height: 1.4)),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(onPressed: _cancelTelegram, child: Text(strings.t('tg_cancel'))),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _telegramBlue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              const SizedBox(width: 10),
-              Expanded(child: FilledButton(onPressed: _busy ? null : _loginWithTelegram, child: Text(strings.t('tg_reopen')))),
-            ],
+              onPressed: _busy ? null : _loginWithTelegram,
+              child: Text(strings.t('tg_reopen'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
           ),
+          const SizedBox(height: 4),
+          TextButton(onPressed: _cancelTelegram, child: Text(strings.t('tg_cancel'))),
         ],
       ),
     );
