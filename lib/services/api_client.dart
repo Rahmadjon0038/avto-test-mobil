@@ -27,18 +27,27 @@ class ApiException implements Exception {
 }
 
 class TelegramLoginConfig {
-  const TelegramLoginConfig({this.codeEnabled = false, this.loginEnabled = false});
+  const TelegramLoginConfig({
+    this.codeEnabled = false,
+    this.loginEnabled = false,
+    this.botEnabled = false,
+  });
 
   final bool codeEnabled;
   final bool loginEnabled;
-  bool get any => codeEnabled || loginEnabled;
+  final bool botEnabled;
+
+  /// "Telegram orqali kirish" tugmasi: avval (bepul) bot, bo'lmasa Telegram OIDC.
+  bool get telegramButton => botEnabled || loginEnabled;
+  bool get any => codeEnabled || telegramButton;
 }
 
 class TelegramLoginStart {
-  const TelegramLoginStart({required this.state, required this.authUrl});
+  const TelegramLoginStart({required this.state, required this.authUrl, this.viaBot = false});
 
   final String state;
   final String authUrl;
+  final bool viaBot;
 }
 
 class ApiClient {
@@ -146,6 +155,7 @@ class ApiClient {
       return TelegramLoginConfig(
         codeEnabled: body['codeEnabled'] == true,
         loginEnabled: body['loginEnabled'] == true,
+        botEnabled: body['botEnabled'] == true,
       );
     } catch (_) {
       return const TelegramLoginConfig();
@@ -176,9 +186,9 @@ class ApiClient {
   }
 
   /// "Telegram orqali kirish": Telegram OIDC havolasi va natijani so'rash uchun `state`.
-  static Future<TelegramLoginStart> telegramStartLogin() async {
+  static Future<TelegramLoginStart> telegramStartLogin({bool viaBot = false}) async {
     final response = await http.post(
-      Uri.parse('$apiBaseUrl/api/auth/telegram/oidc/start'),
+      Uri.parse('$apiBaseUrl/api/auth/telegram/${viaBot ? 'bot' : 'oidc'}/start'),
       headers: _jsonHeaders(),
       body: '{}',
     );
@@ -186,7 +196,7 @@ class ApiClient {
     final state = body['state']?.toString() ?? '';
     final authUrl = body['authUrl']?.toString() ?? '';
     if (state.isEmpty || authUrl.isEmpty) throw Exception('Noto‘g‘ri javob keldi');
-    return TelegramLoginStart(state: state, authUrl: authUrl);
+    return TelegramLoginStart(state: state, authUrl: authUrl, viaBot: viaBot);
   }
 
   /// Tasdiqlanmagan bo'lsa null; tasdiqlangan bo'lsa sessiya; eskirgan/bekor qilingan bo'lsa ApiException(410).

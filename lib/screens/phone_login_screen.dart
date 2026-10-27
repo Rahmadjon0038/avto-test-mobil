@@ -53,6 +53,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
 
   // "Telegram orqali kirish" holati
   String? _tgState;
+  bool _tgViaBot = false;
   Timer? _pollTimer;
   DateTime? _pollDeadline;
   bool _pollInFlight = false;
@@ -162,14 +163,17 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
       _error = null;
     });
     try {
-      final start = await ApiClient.telegramStartLogin();
+      final start = await ApiClient.telegramStartLogin(viaBot: _config.botEnabled);
       final opened = await launchUrl(Uri.parse(start.authUrl), mode: LaunchMode.externalApplication);
       if (!mounted) return;
       if (!opened) {
         setState(() => _error = strings.t('tg_open_failed'));
         return;
       }
-      setState(() => _tgState = start.state);
+      setState(() {
+        _tgState = start.state;
+        _tgViaBot = start.viaBot;
+      });
       _pollDeadline = DateTime.now().add(const Duration(minutes: 5));
       _pollTimer?.cancel();
       _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollOnce());
@@ -256,6 +260,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final telegramAvailable = _config.any;
+    final onlyTelegramButton = _configLoaded && !_config.codeEnabled && _config.telegramButton;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
@@ -278,12 +283,16 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
               ),
               const SizedBox(height: 28),
               Text(
-                strings.t('tg_title'),
+                onlyTelegramButton ? strings.t('tg_title_login') : strings.t('tg_title'),
                 style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _text, height: 1.2),
               ),
               const SizedBox(height: 8),
               Text(
-                telegramAvailable || !_configLoaded ? strings.t('tg_subtitle') : strings.t('tg_unavailable'),
+                !telegramAvailable && _configLoaded
+                    ? strings.t('tg_unavailable')
+                    : onlyTelegramButton
+                        ? strings.t('tg_subtitle_login')
+                        : strings.t('tg_subtitle'),
                 style: const TextStyle(fontSize: 15, color: _muted, height: 1.4),
               ),
               const SizedBox(height: 22),
@@ -291,7 +300,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                 _buildWaitingCard(strings)
               else ...[
                 if (_config.codeEnabled || !_configLoaded) _buildCodeForm(strings),
-                if (_config.loginEnabled) ...[
+                if (_config.telegramButton) ...[
                   if (_config.codeEnabled) _buildDivider(strings),
                   _buildTelegramButton(strings),
                 ],
@@ -426,7 +435,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
           const SizedBox(height: 16),
           Text(strings.t('tg_waiting'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _text)),
           const SizedBox(height: 8),
-          Text(strings.t('tg_waiting_hint'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: _muted, height: 1.4)),
+          Text(strings.t(_tgViaBot ? 'tg_waiting_hint_bot' : 'tg_waiting_hint'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: _muted, height: 1.4)),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -434,7 +443,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> with WidgetsBinding
                 child: OutlinedButton(onPressed: _cancelTelegram, child: Text(strings.t('tg_cancel'))),
               ),
               const SizedBox(width: 10),
-              Expanded(child: FilledButton(onPressed: _busy ? null : _loginWithTelegram, child: Text(strings.t('tg_login_telegram')))),
+              Expanded(child: FilledButton(onPressed: _busy ? null : _loginWithTelegram, child: Text(strings.t('tg_reopen')))),
             ],
           ),
         ],
