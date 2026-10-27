@@ -68,5 +68,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- topshirdi://open — Telegram botdagi "Ilovaga qaytish" tugmasi (sayt /open sahifasi orqali) ilovani ochadi. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>uz.topshirdi.open</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>topshirdi</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Bu manzil Flutter marshrutiga aylantirilmasin (ilova faqat oldinga chiqadi). -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 </dict>
 </plist>

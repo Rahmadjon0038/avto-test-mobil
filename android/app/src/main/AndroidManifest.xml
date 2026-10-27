@@ -27,6 +27,15 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- topshirdi://open — Telegram botdagi "Ilovaga qaytish" tugmasi (sayt /open sahifasi orqali) ilovani ochadi. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="topshirdi"/>
+            </intent-filter>
+            <!-- Bu manzil Flutter marshrutiga aylantirilmasin. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
