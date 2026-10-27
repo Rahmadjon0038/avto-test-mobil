@@ -458,15 +458,19 @@ class _TopshirdiAppState extends State<TopshirdiApp>
 
   Future<void> _logout() async {
     final current = _session;
-    if (current != null &&
-        current.refreshToken != null &&
-        current.refreshToken!.isNotEmpty) {
-      await ApiClient.logout(current.refreshToken!);
-    }
-    await _clearSession();
-    if (!mounted) return;
+    // Avval qurilmada chiqamiz: internet sekin yoki yo'q bo'lsa ham kirish sahifasi
+    // darhol ochilsin. Serverga xabar fonda yuboriladi, xato bo'lsa e'tiborga olinmaydi.
     _passwordChangePromptShown = false;
-    setState(() => _session = null);
+    if (mounted) setState(() => _session = null);
+    await _clearSession();
+    final refreshToken = current?.refreshToken;
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      unawaited(
+        ApiClient.logout(refreshToken)
+            .timeout(const Duration(seconds: 8))
+            .catchError((_) {}),
+      );
+    }
   }
 
   Future<void> _openAuthPage(AuthMode initialMode) async {
